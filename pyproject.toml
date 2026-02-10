@@ -1,0 +1,82 @@
+[project]
+name = "trip-ledger-ai"
+version = "0.1.0"
+description = "AI-powered trip expense tracker using invoice photos and Gemini 2.0 Flash"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "streamlit>=1.30",
+    "google-genai>=0.5",
+    "pandas>=2.0",
+    "plotly>=5.18",
+    "folium>=0.15",
+    "streamlit-folium>=0.18",
+    "pydantic>=2.5",
+    "pillow>=10.0",
+    "openpyxl>=3.1",
+    "fpdf2>=2.7",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.12.7",
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+    "watchdog",
+]
+
+[project.scripts]
+trip-ledger = "src.app:main"
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "B",
+    "C4",
+    "UP",
+    "PL",
+    "NPY",
+    "PD",
+    "TID",
+    "T",
+]
+preview = true
+ignore = [
+    "E226",
+    "E227",
+    "E252",
+    "E402",
+    "B006",
+    "B008",
+    "B905",
+    "C901",
+    "W191",
+    "UP045",
+    "PLR0913",
+    "PLR0917",
+    "PLR0912",
+    "PLR0914",
+    "PLR0915",
+    "PLR2004",
+    "PLR6104",
+    "PD015",
+    "D100",
+    "D400",
+    "D409",
+]
+unfixable = [
+    "D",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

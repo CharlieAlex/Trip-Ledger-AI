@@ -1,0 +1,49 @@
+{
+  "receipt_id": "a1b2c3d4e5f6g7h8",
+  "timestamp": "2024-01-15T14:30:00",
+  "store_name": "ローソン 渋谷駅前店",
+  "store_name_translated": "Lawson 澀谷站前店",
+  "store_address": "東京都渋谷区道玄坂1-2-3",
+  "items": [
+    {
+      "item_id": "a1b2c3d4e5f6g7h8_item_000",
+      "receipt_id": "a1b2c3d4e5f6g7h8",
+      "name": "おにぎり 鮭",
+      "name_translated": "飯糰 鮭魚",
+      "quantity": 2,
+      "unit_price": 130,
+      "total_price": 260,
+      "category": "food",
+      "subcategory": "snack"
+    },
+    {
+      "item_id": "a1b2c3d4e5f6g7h8_item_001",
+      "receipt_id": "a1b2c3d4e5f6g7h8",
+      "name": "ホットコーヒー M",
+      "name_translated": "熱咖啡 M",
+      "quantity": 1,
+      "unit_price": 150,
+      "total_price": 150,
+      "category": "beverage",
+      "subcategory": "coffee"
+    },
+    {
+      "item_id": "a1b2c3d4e5f6g7h8_item_002",
+      "receipt_id": "a1b2c3d4e5f6g7h8",
+      "name": "からあげクン レギュラー",
+      "name_translated": "炸雞塊 原味",
+      "quantity": 1,
+      "unit_price": 238,
+      "total_price": 238,
+      "category": "food",
+      "subcategory": "snack"
+    }
+  ],
+  "subtotal": 600,
+  "tax": 48,
+  "total": 648,
+  "currency": "JPY",
+  "original_language": "ja",
+  "source_image": "lawson_receipt.jpg",
+  "notes": "レシート下部に「ありがとうございました」の記載あり"
+}

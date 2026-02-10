@@ -1,0 +1,39 @@
+# Add .env to gitignore if exists
+.env
+
+# Dependencies
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Data files (keep structure, ignore contents)
+data/photos/*
+data/cache/*
+data/*.csv
+!data/.gitkeep
+!data/photos/.gitkeep
+!data/cache/.gitkeep
+
+# Exports
+exports/*
+!exports/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Build
+dist/
+build/
+*.egg-info/
