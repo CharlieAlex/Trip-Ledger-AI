@@ -9,8 +9,12 @@ import urllib.request
 from pathlib import Path
 from typing import Optional
 
+import pandas as pd
+from loguru import logger
+
 from src.config import Config
 from src.etl.models import GeoLocation
+from src.etl.storage import ReceiptStorage
 
 
 class GeocodingCache:
@@ -30,7 +34,7 @@ class GeocodingCache:
         """Load cache from file."""
         if self.cache_file.exists():
             try:
-                with open(self.cache_file, "r", encoding="utf-8") as f:
+                with open(self.cache_file, encoding="utf-8") as f:
                     self._cache = json.load(f)
             except (json.JSONDecodeError, Exception):
                 self._cache = {}
@@ -109,7 +113,7 @@ class Geocoder:
                 self.cache.set(query, result)
                 return GeoLocation(**result)
         except Exception as e:
-            print(f"Geocoding error: {e}")
+            logger.error(f"Geocoding error: {e}")
 
         return None
 
@@ -170,9 +174,6 @@ class Geocoder:
         Returns:
             Number of receipts updated
         """
-        from src.etl.storage import ReceiptStorage
-        import pandas as pd
-
         storage = ReceiptStorage(data_dir)
         df = storage.load_receipts()
 
@@ -192,8 +193,8 @@ class Geocoder:
 
             result = self.geocode(query, region="japan")
             if result:
-                df.at[idx, "latitude"] = result.latitude
-                df.at[idx, "longitude"] = result.longitude
+                df.loc[idx, "latitude"] = result.latitude
+                df.loc[idx, "longitude"] = result.longitude
                 updated += 1
 
         if updated > 0:

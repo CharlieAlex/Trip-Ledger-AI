@@ -111,7 +111,8 @@ class CategoryClassifier:
 
         return Category.OTHER
 
-    def get_subcategory(self, item_name: str, category: Category) -> str | None:
+    @staticmethod
+    def get_subcategory(item_name: str, category: Category) -> str | None:
         """Get subcategory for an item.
 
         Args:

@@ -6,9 +6,8 @@ token usage and improve recognition quality.
 
 import hashlib
 from pathlib import Path
-from typing import Optional
 
-from PIL import Image, ExifTags
+from PIL import ExifTags, Image
 
 from src.config import Config
 
@@ -54,7 +53,7 @@ class ImagePreprocessor:
         needs_save = needs_save or resized
 
         # 3. Convert HEIC to JPEG
-        is_heic = image_path.suffix.lower() in (".heic", ".heif")
+        is_heic = image_path.suffix.lower() in {".heic", ".heif"}
 
         if needs_save or is_heic:
             # Save to cache directory with processed suffix
@@ -62,7 +61,7 @@ class ImagePreprocessor:
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Convert to RGB if necessary (for JPEG)
-            if img.mode in ("RGBA", "P"):
+            if img.mode in {"RGBA", "P"}:
                 img = img.convert("RGB")
 
             img.save(output_path, "JPEG", quality=85, optimize=True)
@@ -70,52 +69,46 @@ class ImagePreprocessor:
 
         return image_path
 
-    def _auto_rotate(self, img: Image.Image) -> tuple[Image.Image, bool]:
+    @staticmethod
+    def _auto_rotate(img: Image.Image) -> tuple[Image.Image, bool]:
         """Rotate image based on EXIF orientation data.
-
         Returns:
             Tuple of (processed image, whether rotation was applied)
         """
+        rotated_img = img
+        was_rotated = False
+
         try:
             exif = img._getexif()
-            if exif is None:
-                return img, False
+            if exif is not None:
+                # Find orientation tag
+                orientation_key = next(
+                    (key for key, val in ExifTags.TAGS.items() if val == "Orientation"),
+                    None
+                )
 
-            # Find orientation tag
-            orientation_key = None
-            for key, val in ExifTags.TAGS.items():
-                if val == "Orientation":
-                    orientation_key = key
-                    break
+                if orientation_key is not None and orientation_key in exif:
+                    orientation = exif[orientation_key]
 
-            if orientation_key is None or orientation_key not in exif:
-                return img, False
+                    # Define all orientation transformations
+                    transformations = {
+                        2: lambda i: i.transpose(Image.FLIP_LEFT_RIGHT),
+                        3: lambda i: i.rotate(180, expand=True),
+                        4: lambda i: i.rotate(180).transpose(Image.FLIP_LEFT_RIGHT),
+                        5: lambda i: i.rotate(270, expand=True).transpose(Image.FLIP_LEFT_RIGHT),
+                        6: lambda i: i.rotate(270, expand=True),
+                        7: lambda i: i.rotate(90, expand=True).transpose(Image.FLIP_LEFT_RIGHT),
+                        8: lambda i: i.rotate(90, expand=True),
+                    }
 
-            orientation = exif[orientation_key]
-
-            rotations = {
-                3: 180,
-                6: 270,
-                8: 90,
-            }
-
-            if orientation in rotations:
-                return img.rotate(rotations[orientation], expand=True), True
-
-            # Handle mirroring cases
-            if orientation == 2:
-                return img.transpose(Image.FLIP_LEFT_RIGHT), True
-            elif orientation == 4:
-                return img.rotate(180).transpose(Image.FLIP_LEFT_RIGHT), True
-            elif orientation == 5:
-                return img.rotate(270, expand=True).transpose(Image.FLIP_LEFT_RIGHT), True
-            elif orientation == 7:
-                return img.rotate(90, expand=True).transpose(Image.FLIP_LEFT_RIGHT), True
+                    if orientation in transformations:
+                        rotated_img = transformations[orientation](img)
+                        was_rotated = True
 
         except (AttributeError, KeyError, TypeError):
             pass
 
-        return img, False
+        return rotated_img, was_rotated
 
     def _resize_if_needed(self, img: Image.Image) -> tuple[Image.Image, bool]:
         """Resize image if larger than max_size.
@@ -141,7 +134,8 @@ class ImagePreprocessor:
         resized = img.resize((new_width, new_height), Image.LANCZOS)
         return resized, True
 
-    def _get_processed_path(self, original_path: Path) -> Path:
+    @staticmethod
+    def _get_processed_path(original_path: Path) -> Path:
         """Get path for processed image in cache directory."""
         # Use original filename with _processed suffix
         stem = original_path.stem

@@ -3,14 +3,13 @@
 Supports Excel and PDF export formats.
 """
 
-from datetime import datetime
-from decimal import Decimal
-from pathlib import Path
-from typing import Optional
 import argparse
-import sys
+from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
+from fpdf import FPDF
+from loguru import logger
 
 from src.config import Config
 from src.etl.storage import ReceiptStorage
@@ -79,7 +78,6 @@ class ReportExporter:
         Returns:
             Path to created PDF file
         """
-        from fpdf import FPDF
 
         if output_path is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -135,7 +133,7 @@ class ReportExporter:
 
             category = self._create_category_summary(items_df)
             for _, row in category.iterrows():
-                emoji = Config.get_category_emoji(row['category'])
+                _ = Config.get_category_emoji(row['category'])
                 label = Config.get_category_label(row['category'])
                 pdf.cell(0, 8, f"{label}: {row['total_price']:.0f} ({row['item_count']} items)", ln=True)
 
@@ -161,7 +159,8 @@ class ReportExporter:
 
         return pd.DataFrame(data)
 
-    def _create_daily_summary(self, receipts_df: pd.DataFrame) -> pd.DataFrame:
+    @staticmethod
+    def _create_daily_summary(receipts_df: pd.DataFrame) -> pd.DataFrame:
         """Create daily summary DataFrame."""
         daily = receipts_df.groupby("date").agg({
             "total": "sum",
@@ -170,7 +169,8 @@ class ReportExporter:
         daily.columns = ["date", "total", "receipt_count"]
         return daily.sort_values("date")
 
-    def _create_category_summary(self, items_df: pd.DataFrame) -> pd.DataFrame:
+    @staticmethod
+    def _create_category_summary(items_df: pd.DataFrame) -> pd.DataFrame:
         """Create category summary DataFrame."""
         category = items_df.groupby("category").agg({
             "total_price": "sum",
@@ -237,16 +237,16 @@ def main():
     if args.format == "excel":
         output = args.output and Path(args.output)
         path = exporter.export_excel(output)
-        print(f"✅ Exported to: {path}")
+        logger.info(f"✅ Exported to: {path}")
 
     elif args.format == "pdf":
         output = args.output and Path(args.output)
         path = exporter.export_pdf(output)
-        print(f"✅ Exported to: {path}")
+        logger.info(f"✅ Exported to: {path}")
 
     elif args.format == "text":
         text = exporter.generate_share_link()
-        print(text)
+        logger.info(text)
 
 
 if __name__ == "__main__":

@@ -1,13 +1,12 @@
 """Settings page - API configuration and app preferences."""
 
+
 import streamlit as st
-import os
-from pathlib import Path
 
 from src.config import Config
 from src.etl.cache import ProcessingCache
-from src.etl.storage import ReceiptStorage
 from src.etl.exporter import ReportExporter
+from src.etl.storage import ReceiptStorage
 
 st.set_page_config(
     page_title="設定 | Trip Ledger AI",

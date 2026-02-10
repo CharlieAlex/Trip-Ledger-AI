@@ -5,7 +5,11 @@ The primary interface is the Streamlit web application (src/app.py).
 """
 
 import argparse
+import subprocess
 import sys
+
+from src.etl.exporter import main as export_main
+from src.extractors.invoice_parser import main as extract_main
 
 
 def main():
@@ -14,20 +18,20 @@ def main():
         description="Trip Ledger AI - AI-powered trip expense tracker",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
-    # Start the Streamlit web application
-    make run
+            Examples:
+                # Start the Streamlit web application
+                make run
 
-    # Process invoice photos
-    make extract
+                # Process invoice photos
+                make extract
 
-    # Force reprocess all photos
-    make extract-force
+                # Force reprocess all photos
+                make extract-force
 
-    # Export to Excel
-    make export-excel
+                # Export to Excel
+                make export-excel
 
-For more commands, run: make help
+            For more commands, run: make help
         """,
     )
 
@@ -56,7 +60,6 @@ For more commands, run: make help
     args = parser.parse_args()
 
     if args.command == "extract":
-        from src.extractors.invoice_parser import main as extract_main
         sys.argv = ["invoice_parser"]
         if args.force:
             sys.argv.append("--force")
@@ -65,13 +68,11 @@ For more commands, run: make help
         extract_main()
 
     elif args.command == "export":
-        from src.etl.exporter import main as export_main
         sys.argv = ["exporter", "--format", args.format]
         export_main()
 
     elif args.command == "run":
-        import subprocess
-        subprocess.run(["streamlit", "run", "src/app.py"])
+        subprocess.run(["streamlit", "run", "src/app.py"], check=True)
 
     else:
         parser.print_help()

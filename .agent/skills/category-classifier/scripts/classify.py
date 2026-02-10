@@ -13,7 +13,9 @@ from pathlib import Path
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
-from src.extractors.category_classifier import CategoryClassifier  # noqa: E402
+from loguru import logger
+
+from src.extractors.category_classifier import CategoryClassifier
 
 
 def main():
@@ -46,14 +48,13 @@ def main():
         # Process file
         file_path = Path(args.file)
         if not file_path.exists():
-            print(f"❌ File not found: {file_path}")
+            logger.error(f"❌ File not found: {file_path}")
             sys.exit(1)
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             items = [line.strip() for line in f if line.strip()]
 
-        print(f"📦 Classifying {len(items)} items")
-        print("-" * 50)
+        logger.info(f"📦 Classifying {len(items)} items")
 
         for item in items:
             category = classifier.classify(item, args.context)
@@ -61,7 +62,7 @@ def main():
             info = classifier.get_category_info(category)
 
             subcat_str = f" ({subcategory})" if subcategory else ""
-            print(f"{info['emoji']} {item}: {category.value}{subcat_str}")
+            logger.info(f"{info['emoji']} {item}: {category.value}{subcat_str}")
 
     elif args.item:
         # Classify single item
@@ -69,10 +70,8 @@ def main():
         subcategory = classifier.get_subcategory(args.item, category)
         info = classifier.get_category_info(category)
 
-        print(f"Item: {args.item}")
-        print(f"Category: {info['emoji']} {category.value} ({info['label']})")
         if subcategory:
-            print(f"Subcategory: {subcategory}")
+            logger.info(f"Subcategory: {subcategory}")
 
     else:
         parser.print_help()

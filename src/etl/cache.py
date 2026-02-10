@@ -8,6 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from loguru import logger
+
 from src.config import Config
 from src.etl.models import CacheEntry
 
@@ -29,12 +31,12 @@ class ProcessingCache:
         """Load cache from file."""
         if self.cache_file.exists():
             try:
-                with open(self.cache_file, "r", encoding="utf-8") as f:
+                with open(self.cache_file, encoding="utf-8") as f:
                     data = json.load(f)
                     for file_hash, entry_data in data.items():
                         self._cache[file_hash] = CacheEntry(**entry_data)
             except (json.JSONDecodeError, Exception) as e:
-                print(f"Warning: Failed to load cache: {e}")
+                logger.warning(f"Failed to load cache: {e}")
                 self._cache = {}
 
     def _save(self) -> None:

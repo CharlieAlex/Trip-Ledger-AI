@@ -15,9 +15,11 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from loguru import logger
+
 from src.config import Config
-from src.extractors.invoice_parser import InvoiceParser
 from src.etl.storage import ReceiptStorage
+from src.extractors.invoice_parser import InvoiceParser
 
 
 def main():
@@ -52,20 +54,16 @@ def main():
 
     # Check API configuration
     if not Config.is_gemini_configured():
-        print("❌ Error: GEMINI_API_KEY not configured")
-        print("")
-        print("Please set your API key using one of these methods:")
-        print("  1. Create a .env file with: GEMINI_API_KEY=your_key_here")
-        print("  2. Set environment variable: export GEMINI_API_KEY=your_key_here")
-        print("  3. Use the Streamlit UI settings page")
+        logger.error("GEMINI_API_KEY not configured")
+        logger.info("Please set your API key using one of these methods:")
+        logger.info("  1. Create a .env file with: GEMINI_API_KEY=your_key_here")
+        logger.info("  2. Set environment variable: export GEMINI_API_KEY=your_key_here")
+        logger.info("  3. Use the Streamlit UI settings page")
         sys.exit(1)
 
-    print("=" * 60)
-    print("🧾 Invoice Extractor Skill")
-    print("=" * 60)
-    print(f"Model: {Config.GEMINI_MODEL}")
-    print(f"Force reprocess: {args.force}")
-    print("")
+    logger.info("🧾 Invoice Extractor Skill")
+    logger.info(f"Model: {Config.GEMINI_MODEL}")
+    logger.info(f"Force reprocess: {args.force}")
 
     # Initialize parser and storage
     invoice_parser = InvoiceParser(force_reprocess=args.force)
@@ -74,43 +72,40 @@ def main():
     if args.file:
         # Process single file
         file_path = Path(args.file)
-        print(f"📷 Processing: {file_path.name}")
-        print("-" * 40)
+        logger.info(f"📷 Processing: {file_path.name}")
 
         result = invoice_parser.process_image(file_path)
 
         if result.success and result.receipt:
             receipt = result.receipt
-            print(f"✅ Store: {receipt.store_name}")
+            logger.success(f"Store: {receipt.store_name}")
             if receipt.store_name_translated:
-                print(f"   ({receipt.store_name_translated})")
-            print(f"💰 Total: {receipt.total} {receipt.currency.value}")
-            print(f"📅 Date: {receipt.date} {receipt.time}")
-            print(f"📦 Items: {len(receipt.items)}")
+                logger.info(f"   ({receipt.store_name_translated})")
+            logger.info(f"💰 Total: {receipt.total} {receipt.currency.value}")
+            logger.info(f"📅 Date: {receipt.date} {receipt.time}")
+            logger.info(f"📦 Items: {len(receipt.items)}")
 
             for item in receipt.items:
                 emoji = Config.get_category_emoji(item.category.value)
-                print(f"   {emoji} {item.name}: {item.total_price}")
+                logger.info(f"   {emoji} {item.name}: {item.total_price}")
 
             # Save to CSV
             storage.save_receipt(receipt)
-            print("")
-            print(f"💾 Saved to: {args.output}/")
+            logger.info(f"💾 Saved to: {args.output}/")
 
         elif result.success:
-            print("ℹ️  Already processed (cached)")
+            logger.info("ℹ️  Already processed (cached)")
         else:
-            print(f"❌ Failed: {result.error_message}")
+            logger.error(f"❌ Failed: {result.error_message}")
             sys.exit(1)
 
     else:
         # Process directory
         photo_dir = Path(args.dir)
-        print(f"📁 Directory: {photo_dir}")
-        print("-" * 40)
+        logger.info(f"📁 Directory: {photo_dir}")
 
         if not photo_dir.exists():
-            print(f"❌ Directory not found: {photo_dir}")
+            logger.error(f"❌ Directory not found: {photo_dir}")
             sys.exit(1)
 
         # Count images
@@ -120,12 +115,11 @@ def main():
             images.extend(photo_dir.glob(f"*{ext.upper()}"))
 
         if not images:
-            print("ℹ️  No images found in directory")
-            print(f"   Supported formats: {', '.join(Config.SUPPORTED_IMAGE_EXTENSIONS)}")
+            logger.warning("ℹ️  No images found in directory")
+            logger.info(f"   Supported formats: {', '.join(Config.SUPPORTED_IMAGE_EXTENSIONS)}")
             sys.exit(0)
 
-        print(f"Found {len(images)} image(s)")
-        print("")
+        logger.info(f"Found {len(images)} image(s)")
 
         # Process each image
         success_count = 0
@@ -134,19 +128,19 @@ def main():
         all_receipts = []
 
         for i, image_path in enumerate(sorted(images), 1):
-            print(f"[{i}/{len(images)}] {image_path.name}...", end=" ")
+            logger.info(f"[{i}/{len(images)}] {image_path.name}...")
 
             result = invoice_parser.process_image(image_path)
 
             if result.success and result.receipt:
-                print(f"✅ {result.receipt.store_name} ({result.receipt.total} {result.receipt.currency.value})")
+                logger.success(f"{result.receipt.store_name} ({result.receipt.total} {result.receipt.currency.value})")
                 all_receipts.append(result.receipt)
                 success_count += 1
             elif result.success:
-                print("⏭️  Cached")
+                logger.info("⏭️  Cached")
                 skipped_count += 1
             else:
-                print(f"❌ {result.error_message}")
+                logger.error(f"❌ {result.error_message}")
                 failed_count += 1
 
         # Save all receipts
@@ -155,18 +149,16 @@ def main():
                 storage.save_receipt(receipt)
 
         # Summary
-        print("")
-        print("=" * 60)
-        print("📊 Summary")
-        print("=" * 60)
-        print(f"✅ Success: {success_count}")
-        print(f"⏭️  Skipped (cached): {skipped_count}")
-        print(f"❌ Failed: {failed_count}")
+        # Summary
+        logger.info("📊 Summary")
+        logger.success(f"✅ Success: {success_count}")
+        logger.info(f"⏭️  Skipped (cached): {skipped_count}")
+        logger.error(f"❌ Failed: {failed_count}")
 
         if all_receipts:
             total_amount = sum(r.total for r in all_receipts)
-            print(f"💰 Total extracted: {total_amount}")
-            print(f"💾 Data saved to: {args.output}/")
+            logger.info(f"💰 Total extracted: {total_amount}")
+            logger.info(f"💾 Data saved to: {args.output}/")
 
 
 if __name__ == "__main__":

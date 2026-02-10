@@ -3,10 +3,13 @@
 Main entry point for the web application.
 """
 
-import streamlit as st
-from config import Config
 import sys
 from pathlib import Path
+
+import streamlit as st
+
+from config import Config
+
 project_root = Path(__file__).parents[1]
 sys.path.append(str(project_root))
 from src.etl.storage import ReceiptStorage  # noqa: E402

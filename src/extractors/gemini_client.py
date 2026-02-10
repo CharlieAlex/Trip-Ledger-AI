@@ -5,20 +5,18 @@ multi-language invoice/receipt image analysis.
 """
 
 import base64
+import json
 from pathlib import Path
 from typing import Optional
 
 from google import genai
 from google.genai import types
+from loguru import logger
 
 from src.config import Config
 
-
-class GeminiClient:
-    """Client for Gemini API interactions."""
-
-    # Prompt template for invoice extraction
-    EXTRACTION_PROMPT = """You are an expert at reading receipts and invoices. Analyze this image and extract all information.
+EXTRACTION_PROMPT = """You are an expert at reading receipts and invoices.
+Analyze this image and extract all information.
 
 IMPORTANT:
 - Detect the language of the receipt (Japanese, English, Chinese, etc.)
@@ -62,8 +60,14 @@ Rules:
    - パン = bread (food/snack)
    - お茶/水 = tea/water (beverage/soft_drink)
    - コーヒー = coffee (beverage/coffee)
-6. Return ONLY the JSON, no markdown code blocks or other text"""
+6. Return ONLY the JSON, no markdown code blocks or other text
+"""
 
+
+class GeminiClient:
+    """Client for Gemini API interactions."""
+
+    # Prompt template for invoice extraction
     def __init__(self, api_key: Optional[str] = None):
         """Initialize Gemini client.
 
@@ -119,7 +123,7 @@ Rules:
                         data=base64.standard_b64decode(image_data),
                         mime_type=mime_type,
                     ),
-                    types.Part.from_text(text=self.EXTRACTION_PROMPT),
+                    types.Part.from_text(text=EXTRACTION_PROMPT),
                 ],
             )
         ]
@@ -137,7 +141,8 @@ Rules:
         # Parse JSON response
         return self._parse_response(response.text)
 
-    def _get_mime_type(self, image_path: Path) -> str:
+    @staticmethod
+    def _get_mime_type(image_path: Path) -> str:
         """Get MIME type for an image file."""
         extension = image_path.suffix.lower()
         mime_types = {
@@ -150,12 +155,12 @@ Rules:
         }
         return mime_types.get(extension, "image/jpeg")
 
-    def _parse_response(self, response_text: str) -> dict:
+    @staticmethod
+    def _parse_response(response_text: str) -> dict:
         """Parse JSON response from Gemini.
 
         Handles potential markdown code blocks or extra text.
         """
-        import json
 
         # Clean up response
         text = response_text.strip()
@@ -173,14 +178,14 @@ Rules:
         try:
             return json.loads(text)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse Gemini response as JSON: {e}\nResponse: {text}")
+            raise ValueError(f"Failed to parse Gemini response as JSON: {e}\nResponse: {text}") from e
 
 
 def test_client():
     """Simple test function for the Gemini client."""
     client = GeminiClient()
-    print(f"Client initialized with model: {client.model_name}")
-    print(f"API key configured: {bool(client.api_key)}")
+    logger.info(f"Client initialized with model: {client.model_name}")
+    logger.info(f"API key configured: {bool(client.api_key)}")
 
 
 if __name__ == "__main__":

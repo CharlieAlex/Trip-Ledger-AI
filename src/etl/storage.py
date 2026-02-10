@@ -116,7 +116,8 @@ class ReceiptStorage:
         receipts_df.to_csv(self.receipts_file, index=False)
         items_df.to_csv(self.items_file, index=False)
 
-    def _load_or_create_df(self, file_path: Path, columns: list) -> pd.DataFrame:
+    @staticmethod
+    def _load_or_create_df(file_path: Path, columns: list) -> pd.DataFrame:
         """Load existing CSV or create empty DataFrame.
 
         Args:
@@ -234,7 +235,7 @@ class ReceiptStorage:
         receipts_df = self.load_receipts()
         items_df = self.load_items()
 
-        if receipt_id not in receipts_df["receipt_id"].values:
+        if receipt_id not in receipts_df["receipt_id"].to_numpy():
             return False
 
         receipts_df = receipts_df[receipts_df["receipt_id"] != receipt_id]

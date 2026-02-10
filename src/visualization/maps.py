@@ -1,8 +1,10 @@
 """Map visualization utilities using Folium."""
 
+from typing import Optional
+
 import folium
 import pandas as pd
-from typing import Optional
+from folium.plugins import HeatMap
 
 
 def create_expense_map(
@@ -83,8 +85,7 @@ def create_heatmap(
     Returns:
         Folium Map object with heatmap layer
     """
-    from folium.plugins import HeatMap
-
+    # Create heatmap data
     has_location = receipts_df["latitude"].notna() & receipts_df["longitude"].notna()
     geocoded_df = receipts_df[has_location]
 

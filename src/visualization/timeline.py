@@ -1,7 +1,8 @@
 """Timeline visualization utilities."""
 
-import pandas as pd
 from typing import Optional
+
+import pandas as pd
 
 
 def create_timeline_view(

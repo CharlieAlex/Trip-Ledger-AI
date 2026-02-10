@@ -6,11 +6,12 @@ Coordinates image preprocessing, API calls, and data storage.
 import argparse
 import sys
 import time
-import uuid
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Optional
+
+from loguru import logger
 
 from src.config import Config
 from src.etl.cache import ProcessingCache
@@ -76,7 +77,6 @@ class InvoiceParser:
         # Check cache
         file_hash = get_image_hash(image_path)
         if not self.force_reprocess and self.cache.is_processed(file_hash):
-            entry = self.cache.get_entry(file_hash)
             return ProcessingResult(
                 source_image=str(image_path),
                 success=True,
@@ -210,7 +210,8 @@ class InvoiceParser:
 
         return items
 
-    def _parse_timestamp(self, timestamp_str: Optional[str]) -> datetime:
+    @staticmethod
+    def _parse_timestamp(timestamp_str: Optional[str]) -> datetime:
         """Parse timestamp string to datetime.
 
         Args:
@@ -241,7 +242,8 @@ class InvoiceParser:
 
         return datetime.now()
 
-    def _to_decimal(self, value) -> Optional[Decimal]:
+    @staticmethod
+    def _to_decimal(value) -> Optional[Decimal]:
         """Convert value to Decimal.
 
         Args:
@@ -322,34 +324,34 @@ def main():
 
     # Check API key
     if not Config.is_gemini_configured():
-        print("Error: GEMINI_API_KEY not configured")
-        print("Set it in .env file or as environment variable")
+        logger.error("GEMINI_API_KEY not configured")
+        logger.error("Set it in .env file or as environment variable")
         sys.exit(1)
 
     invoice_parser = InvoiceParser(force_reprocess=args.force)
 
     if args.file:
         # Process single file
-        print(f"Processing: {args.file}")
+        logger.info(f"Processing: {args.file}")
         result = invoice_parser.process_image(args.file)
 
         if result.success:
             if result.receipt:
-                print(f"✓ Success: {result.receipt.store_name}")
-                print(f"  Total: {result.receipt.total} {result.receipt.currency.value}")
-                print(f"  Items: {len(result.receipt.items)}")
+                logger.success(f"✓ Success: {result.receipt.store_name}")
+                logger.info(f"  Total: {result.receipt.total} {result.receipt.currency.value}")
+                logger.info(f"  Items: {len(result.receipt.items)}")
             else:
-                print(f"✓ Already processed (cached)")
+                logger.info("✓ Already processed (cached)")
         else:
-            print(f"✗ Failed: {result.error_message}")
+            logger.error(f"✗ Failed: {result.error_message}")
     else:
         # Process directory
-        print(f"Processing directory: {args.dir}")
+        logger.info(f"Processing directory: {args.dir}")
         if args.force:
-            print("(Force mode: ignoring cache)")
+            logger.warning("(Force mode: ignoring cache)")
 
         def progress(current, total, filename):
-            print(f"[{current}/{total}] {filename}")
+            logger.info(f"[{current}/{total}] {filename}")
 
         results = invoice_parser.process_directory(
             Path(args.dir),
@@ -359,7 +361,7 @@ def main():
         # Summary
         success = sum(1 for r in results if r.success)
         failed = sum(1 for r in results if not r.success)
-        print(f"\nComplete: {success} success, {failed} failed")
+        logger.info(f"\nComplete: {success} success, {failed} failed")
 
 
 if __name__ == "__main__":

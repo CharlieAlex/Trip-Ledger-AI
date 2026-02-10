@@ -1,7 +1,8 @@
 """Upload page - Upload and process invoice photos."""
 
-import streamlit as st
 from pathlib import Path
+
+import streamlit as st
 
 from src.config import Config
 from src.etl.storage import ReceiptStorage
@@ -117,7 +118,8 @@ if uploaded_files:
                             items_data = [
                                 {
                                     "品項": item.name,
-                                    "類別": f"{Config.get_category_emoji(item.category.value)} {Config.get_category_label(item.category.value)}",
+                                    "類別": f"{Config.get_category_emoji(item.category.value)} "
+                f"{Config.get_category_label(item.category.value)}",
                                     "金額": float(item.total_price),
                                 }
                                 for item in receipt.items

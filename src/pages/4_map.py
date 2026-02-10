@@ -1,8 +1,7 @@
 """Map page - Geographic visualization of expenses."""
 
-import streamlit as st
-import pandas as pd
 import folium
+import streamlit as st
 from streamlit_folium import st_folium
 
 from src.config import Config

@@ -1,12 +1,11 @@
 """Timeline page - Daily expense timeline visualization."""
 
-import streamlit as st
+
 import pandas as pd
-from datetime import datetime
+import streamlit as st
 
 from src.config import Config
 from src.etl.storage import ReceiptStorage
-from src.visualization.timeline import create_timeline_view
 
 st.set_page_config(
     page_title="時間線 | Trip Ledger AI",

@@ -1,8 +1,8 @@
 """Analysis page - Charts and statistics visualization."""
 
-import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+import streamlit as st
 
 from src.config import Config
 from src.etl.storage import ReceiptStorage

@@ -8,7 +8,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
-class Category(str, Enum):
+class Category(Enum):
     """Item category enumeration."""
 
     FOOD = "food"
@@ -21,7 +21,7 @@ class Category(str, Enum):
     OTHER = "other"
 
 
-class Currency(str, Enum):
+class Currency(Enum):
     """Supported currencies."""
 
     TWD = "TWD"
