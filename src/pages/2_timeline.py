@@ -1,6 +1,7 @@
 """Timeline page - Daily expense timeline visualization."""
 
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -56,6 +57,38 @@ with col3:
     if len(filtered_df) > 0:
         avg = filtered_df['total'].mean()
         st.metric("📊 平均消費", f"{avg:,.0f}")
+
+st.markdown("---")
+
+# Visualizations
+st.markdown("### 📈 累計消費趨勢")
+
+if len(filtered_df) > 0:
+    # Sort by timestamp
+    filtered_df["timestamp"] = pd.to_datetime(filtered_df["timestamp"])
+    timeline_df = filtered_df.sort_values("timestamp")
+    timeline_df["cumulative"] = timeline_df["total"].cumsum()
+
+    if len(filtered_df) > 0:
+        # Sort by timestamp
+        filtered_df["timestamp"] = pd.to_datetime(filtered_df["timestamp"])
+        timeline_df = filtered_df.sort_values("timestamp")
+        timeline_df["cumulative"] = timeline_df["total"].cumsum()
+
+        # Create Altair chart
+        chart = alt.Chart(timeline_df).mark_line(point=True).encode(
+            x=alt.X("timestamp", title="時間", axis=alt.Axis(format="%Y-%m-%d")),
+            y=alt.Y("cumulative", title="累計金額"),
+            tooltip=[
+                alt.Tooltip("timestamp", title="時間", format="%Y-%m-%d %H:%M"),
+                alt.Tooltip("cumulative", title="累計金額", format=",.0f"),
+                alt.Tooltip("store_name", title="店家"),
+                alt.Tooltip("total", title="單筆金額", format=",.0f")
+            ],
+            color=alt.value("#FF4B4B")
+        ).interactive()
+
+        st.altair_chart(chart, use_container_width=True)
 
 st.markdown("---")
 
