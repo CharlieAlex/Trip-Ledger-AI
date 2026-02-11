@@ -7,6 +7,7 @@ import streamlit as st
 
 from src.config import Config
 from src.etl.exporter import ReportExporter
+from src.ui.sidebar import render_sidebar
 
 st.set_page_config(
     page_title="設定 | Trip Ledger AI",
@@ -15,6 +16,8 @@ st.set_page_config(
 )
 
 st.title("⚙️ 設定")
+
+render_sidebar()
 
 # Language Settings
 st.markdown("### 🌐 語言設定")

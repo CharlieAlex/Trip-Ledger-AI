@@ -7,6 +7,7 @@ from streamlit_folium import st_folium
 from src.config import Config
 from src.etl.storage import ReceiptStorage
 from src.geo.geocoder import Geocoder
+from src.ui.sidebar import render_sidebar
 
 st.set_page_config(
     page_title="地圖 | Trip Ledger AI",
@@ -15,6 +16,8 @@ st.set_page_config(
 )
 
 st.title("🗺️ 消費地圖")
+
+render_sidebar()
 
 # Load data
 storage = ReceiptStorage()

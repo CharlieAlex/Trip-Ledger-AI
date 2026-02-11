@@ -12,6 +12,7 @@ from src.etl.cache import ProcessingCache
 from src.etl.storage import ReceiptStorage
 from src.extractors.image_preprocessor import get_image_hash
 from src.extractors.invoice_parser import InvoiceParser
+from src.ui.sidebar import render_sidebar
 
 st.set_page_config(
     page_title="發票管理 | Trip Ledger AI",
@@ -37,6 +38,9 @@ def main():
     cache = ProcessingCache()
 
     # --- Section 1: Upload ---
+
+    render_sidebar()
+
     with st.expander("📤 上傳新發票", expanded=False):
         st.markdown("### 上傳照片")
         uploaded_files = st.file_uploader(
