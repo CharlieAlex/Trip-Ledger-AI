@@ -50,51 +50,65 @@ with tab1:
     st.markdown("### 類別消費分布")
 
     if len(items_df) > 0:
-        # Category totals
-        category_data = items_df.groupby("category")["total_price"].sum().reset_index()
-        category_data.columns = ["category", "total"]
+        # Prepare data with labels
+        items_df["category_label"] = items_df["category"].apply(
+            lambda x: f"{Config.get_category_emoji(x)} {Config.get_category_label(x)}"
+        )
 
-        # Add emoji and labels
-        category_data["emoji"] = category_data["category"].apply(Config.get_category_emoji)
-        category_data["label"] = category_data["category"].apply(Config.get_category_label)
-        category_data["display"] = category_data["emoji"] + " " + category_data["label"]
-        category_data = category_data.sort_values("total", ascending=True)
+        # View selection
+        view_type = st.radio("檢視模式", ["大類別", "子類別"], horizontal=True)
 
-        col1, col2 = st.columns(2)
+        if view_type == "大類別":
+            # Main category aggregation
+            cat_data = items_df.groupby("category_label")["total_price"].sum().reset_index()
+            cat_data.columns = ["label", "total"]
+            cat_data = cat_data.sort_values("total", ascending=True)
 
-        with col1:
-            # Bar chart
             fig = px.bar(
-                category_data,
+                cat_data,
                 x="total",
-                y="display",
+                y="label",
                 orientation="h",
                 title="各類別消費金額",
-                labels={"total": "金額", "display": "類別"},
+                labels={"total": "金額", "label": "類別"},
+                text_auto=".2s",
                 color="total",
                 color_continuous_scale="Blues",
             )
-            fig.update_layout(showlegend=False, coloraxis_showscale=False)
-            st.plotly_chart(fig, width='stretch')
+            fig.update_layout(showlegend=False)
+            st.plotly_chart(fig, use_container_width=True)
 
-        with col2:
-            # Pie chart
-            fig = px.pie(
-                category_data,
-                values="total",
-                names="display",
-                title="消費比例",
-                hole=0.4,
+        else:
+            # Subcategory aggregation
+            # Handle empty subcategories
+            items_df["subcategory_display"] = items_df.apply(
+                lambda x: (
+                    f"{x['category_label']} - {x['subcategory']}"
+                    if x["subcategory"]
+                    else f"{x['category_label']} (未分類)"
+                ),
+                axis=1,
             )
-            fig.update_traces(textposition="inside", textinfo="percent+label")
-            st.plotly_chart(fig, width='stretch')
 
-        # Category table
-        st.markdown("### 類別明細")
-        table_data = category_data[["display", "total"]].copy()
-        table_data.columns = ["類別", "消費金額"]
-        table_data["消費金額"] = table_data["消費金額"].apply(lambda x: f"{x:,.0f}")
-        st.dataframe(table_data.sort_values("類別"), width='stretch', hide_index=True)
+            sub_data = items_df.groupby("subcategory_display")["total_price"].sum().reset_index()
+            sub_data.columns = ["label", "total"]
+            sub_data = sub_data.sort_values("total", ascending=True)
+
+            fig = px.bar(
+                sub_data,
+                x="total",
+                y="label",
+                orientation="h",
+                title="子類別消費金額",
+                labels={"total": "金額", "label": "子類別"},
+                text_auto=".2s",
+                height=max(400, len(sub_data) * 30),  # Adjust height for many items
+                color="total",
+                color_continuous_scale="Greens",
+            )
+            fig.update_layout(showlegend=False)
+            st.plotly_chart(fig, use_container_width=True)
+
     else:
         st.info("尚無品項資料")
 
@@ -139,37 +153,51 @@ with tab3:
     st.markdown("### 店家消費統計")
 
     if len(receipts_df) > 0:
-        # Store totals
+        # Store aggregations
         store_data = receipts_df.groupby("store_name").agg({
             "total": "sum",
-            "receipt_id": "count",
+            "receipt_id": "count"
         }).reset_index()
-        store_data.columns = ["store", "total", "visits"]
-        store_data = store_data.sort_values("total", ascending=False)
+        store_data.columns = ["store", "total_amount", "visit_count"]
 
-        # Top stores
-        top_n = min(10, len(store_data))
-        top_stores = store_data.head(top_n)
+        col1, col2 = st.columns(2)
 
-        fig = px.bar(
-            top_stores,
-            x="total",
-            y="store",
-            orientation="h",
-            title=f"消費最高的 {top_n} 家店",
-            labels={"total": "消費金額", "store": "店家"},
-            color="visits",
-            color_continuous_scale="Oranges",
-        )
-        fig.update_layout(yaxis={"categoryorder": "total ascending"})
-        st.plotly_chart(fig, width='stretch')
+        with col1:
+            # Chart 1: By Amount
+            top_amount = store_data.sort_values("total_amount", ascending=True).tail(15)  # Top 15
+            fig1 = px.bar(
+                top_amount,
+                x="total_amount",
+                y="store",
+                orientation="h",
+                title="店家消費總額排名 (前15名)",
+                labels={"total_amount": "金額", "store": "店家"},
+                text_auto=".2s",
+                color="total_amount",
+                color_continuous_scale="Oranges"
+            )
+            fig1.update_layout(showlegend=False)
+            st.plotly_chart(fig1, use_container_width=True)
 
-        # Store table
-        st.markdown("### 店家明細")
-        table_data = store_data.copy()
-        table_data.columns = ["店家", "消費金額", "光顧次數"]
-        table_data["消費金額"] = table_data["消費金額"].apply(lambda x: f"{x:,.0f}")
-        st.dataframe(table_data, width='stretch', hide_index=True)
+        with col2:
+            # Chart 2: By Count
+            top_count = store_data.sort_values("visit_count", ascending=True).tail(15)  # Top 15
+            fig2 = px.bar(
+                top_count,
+                x="visit_count",
+                y="store",
+                orientation="h",
+                title="店家光顧次數排名 (前15名)",
+                labels={"visit_count": "次數", "store": "店家"},
+                text_auto=True,
+                color="visit_count",
+                color_continuous_scale="Purples"
+            )
+            fig2.update_layout(showlegend=False)
+            st.plotly_chart(fig2, use_container_width=True)
+
+    else:
+        st.info("尚無發票資料")
 
 with tab4:
     st.markdown("### 品項明細")
