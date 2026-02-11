@@ -277,6 +277,57 @@ class ReceiptStorage:
 
         return True
 
+    def update_items(self, receipt_id: str, new_items_df: pd.DataFrame) -> bool:
+        """Update items for a receipt.
+
+        Args:
+            receipt_id: Receipt ID
+            new_items_df: DataFrame containing new items
+
+        Returns:
+            True if successful
+        """
+        # Load existing
+        items_df = self.load_items()
+
+        # Remove old items for this receipt
+        items_df = items_df[items_df["receipt_id"] != receipt_id]
+
+        # Add new items
+        items_df = pd.concat([items_df, new_items_df], ignore_index=True)
+
+        # Save items
+        items_df.to_csv(self.items_file, index=False)
+
+        # Recalculate receipt total
+        new_total = new_items_df["total_price"].sum()
+        self.update_receipt(receipt_id, {"total": new_total})
+
+        return True
+
+    def update_receipt(self, receipt_id: str, updates: dict) -> bool:
+        """Update specific fields of a receipt.
+
+        Args:
+            receipt_id: Receipt ID
+            updates: Dictionary of fields to update
+
+        Returns:
+            True if successful
+        """
+        receipts_df = self.load_receipts()
+
+        if receipt_id not in receipts_df["receipt_id"].to_numpy():
+            return False
+
+        # Update fields
+        for key, value in updates.items():
+            if key in receipts_df.columns:
+                receipts_df.loc[receipts_df["receipt_id"] == receipt_id, key] = value
+
+        receipts_df.to_csv(self.receipts_file, index=False)
+        return True
+
     @property
     def stats(self) -> dict:
         """Get storage statistics.

@@ -177,6 +177,53 @@ def display_receipt_card(row, storage, cache, duplicates):
             if st.button("🗑️ 刪除", key=f"del_{receipt_id}", type="primary"):
                 delete_receipt(receipt_id, row["source_image"], storage, cache)
 
+    # Expanded details for editing
+    with st.expander("📝 編輯明細", expanded=False):
+        # Get items for this receipt
+        items_df = storage.get_items_by_receipt(receipt_id)
+
+        if len(items_df) > 0:
+            # Prepare for editor
+            edit_df = items_df.copy()
+
+            # Category options
+            categories = list(Config.CATEGORIES.keys())
+
+            # Display editor
+            edited_df = st.data_editor(
+                edit_df,
+                column_config={
+                    "name": "品項名稱",
+                    "unit_price": st.column_config.NumberColumn("單價", min_value=0, format="%.2f"),
+                    "quantity": st.column_config.NumberColumn("數量", min_value=1, step=1),
+                    "total_price": st.column_config.NumberColumn("總價", min_value=0, format="%.2f"),
+                    "category": st.column_config.SelectboxColumn(
+                        "類別",
+                        options=categories,
+                        required=True,
+                    ),
+                    "subcategory": st.column_config.TextColumn("子類別"),
+                },
+                hide_index=True,
+                key=f"editor_{receipt_id}",
+                disabled=["item_id", "receipt_id", "name_translated"],
+                column_order=["name", "category", "subcategory", "unit_price", "quantity", "total_price"]
+            )
+
+            if st.button("💾 儲存修改", key=f"save_{receipt_id}"):
+                # Recalculate totals based on edited values (optional validation)
+                # For now assume user input is correct, or we can force calc
+                edited_df["total_price"] = edited_df["unit_price"] * edited_df["quantity"]
+
+                if storage.update_items(receipt_id, edited_df):
+                    st.success("✅ 已儲存")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("❌ 儲存失敗")
+        else:
+            st.info("此發票無品項資料")
+
 
 def reprocess_receipt(source_image):
     """Reprocess a single receipt."""
