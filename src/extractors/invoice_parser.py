@@ -136,7 +136,10 @@ class InvoiceParser:
             Receipt model instance
         """
         # Generate receipt ID
+        # Generate receipt ID
         receipt_id = file_hash[:16]
+
+        total_decimal = self._to_decimal(raw_data.get("total", 0))
 
         # Parse timestamp
         timestamp = self._parse_timestamp(raw_data.get("timestamp"))
@@ -161,12 +164,21 @@ class InvoiceParser:
             items=items,
             subtotal=self._to_decimal(raw_data.get("subtotal")),
             tax=self._to_decimal(raw_data.get("tax")),
-            total=self._to_decimal(raw_data.get("total", 0)),
+            total=total_decimal,
             currency=currency,
             original_language=raw_data.get("original_language", "unknown"),
             source_image=source_path.name,
             notes=raw_data.get("notes"),
         )
+
+        # Tax/Subtotal logic: if subtotal missing, default to total (assuming tax included/exempt)
+        if receipt.subtotal is None:
+            receipt.subtotal = receipt.total
+
+        # If tax is None, set to 0? Or leave as None? User didn't specify, but usually safe to say 0 or None.
+        if receipt.tax is None and receipt.subtotal == receipt.total:
+            # Implies 0 tax or tax included but unknown.
+            pass
 
         return receipt
 

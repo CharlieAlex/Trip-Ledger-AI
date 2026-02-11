@@ -15,32 +15,34 @@ from loguru import logger
 
 from src.config import Config
 
-EXTRACTION_PROMPT = """You are an expert at reading receipts and invoices.
+
+def get_extraction_prompt(target_lang: str, source_lang: str) -> str:
+    return f"""You are an expert at reading receipts and invoices.
 Analyze this image and extract all information.
 
 IMPORTANT:
 - Detect the language of the receipt (Japanese, English, Chinese, etc.)
 - Keep original text for store names and item names
-- Also provide translated versions in Traditional Chinese if not already in Chinese
+- Also provide translated versions in {target_lang} if not already in {target_lang}
 - Use 24-hour time format for timestamps
 - If you cannot read certain fields clearly, use null
 
 Return the data as a valid JSON object with this exact structure:
-{
+{{
   "store_name": "store name in original language",
-  "store_name_translated": "store name in Traditional Chinese (if different)",
+  "store_name_translated": "store name in {target_lang} (if different, otherwise null)",
   "store_address": "full address if visible, null otherwise",
   "timestamp": "YYYY-MM-DDTHH:MM:SS format, use best estimate for date/time",
   "items": [
-    {
+    {{
       "name": "item name in original language",
-      "name_translated": "item name in Traditional Chinese (if different)",
+      "name_translated": "item name in {target_lang} (if different)",
       "quantity": 1,
       "unit_price": 100,
       "total_price": 100,
       "category": "food|beverage|transport|lodging|shopping|entertainment|health|other",
       "subcategory": "specific type like meal, snack, coffee, train, hotel, souvenir, etc."
-    }
+    }}
   ],
   "subtotal": 900,
   "tax": 90,
@@ -48,11 +50,11 @@ Return the data as a valid JSON object with this exact structure:
   "currency": "JPY|TWD|USD|EUR|KRW|CNY|GBP|HKD",
   "original_language": "ja|en|zh-TW|zh-CN|ko|other",
   "notes": "any additional observations about the receipt"
-}
+}}
 
 Rules:
 1. All numeric values should be numbers, not strings
-2. If tax is included in prices (内税), set subtotal to null and only provide total
+2. If tax is included in prices (内税), try to identify the tax amount. If subtotal is not explicitly listed, use null.
 3. If you see 税込 or similar, the total already includes tax
 4. Category must be one of: food, beverage, transport, lodging, shopping, entertainment, health, other
 5. For Japanese convenience stores (ローソン, セブンイレブン, ファミリーマート), common items:
@@ -123,7 +125,11 @@ class GeminiClient:
                         data=base64.standard_b64decode(image_data),
                         mime_type=mime_type,
                     ),
-                    types.Part.from_text(text=EXTRACTION_PROMPT),
+                    types.Part.from_text(
+                        text=get_extraction_prompt(
+                            Config.PRIMARY_LANGUAGE, Config.DESTINATION_LANGUAGE
+                        )
+                    ),
                 ],
             )
         ]

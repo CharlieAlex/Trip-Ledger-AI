@@ -42,6 +42,9 @@ class Config:
 
     # Default currency
     DEFAULT_CURRENCY: str = os.getenv("DEFAULT_CURRENCY", "JPY")
+    # Language settings
+    PRIMARY_LANGUAGE: str = os.getenv("PRIMARY_LANGUAGE", "Traditional Chinese")
+    DESTINATION_LANGUAGE: str = os.getenv("DESTINATION_LANGUAGE", "Japanese")
 
     # Category definitions
     CATEGORIES_FILE: Path = DATA_DIR / "categories.json"
@@ -96,6 +99,14 @@ class Config:
         """Set Google Maps API key at runtime."""
         cls.GOOGLE_MAPS_API_KEY = api_key
         os.environ["GOOGLE_MAPS_API_KEY"] = api_key
+
+    @classmethod
+    def set_language_settings(cls, primary: str, destination: str) -> None:
+        """Set language settings."""
+        cls.PRIMARY_LANGUAGE = primary
+        cls.DESTINATION_LANGUAGE = destination
+        os.environ["PRIMARY_LANGUAGE"] = primary
+        os.environ["DESTINATION_LANGUAGE"] = destination
 
     @classmethod
     def get_category_emoji(cls, category: str) -> str:

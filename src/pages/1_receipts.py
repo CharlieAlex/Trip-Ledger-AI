@@ -151,7 +151,14 @@ def display_receipt_card(row, storage, cache, duplicates):
     container = st.container(border=True)
     with container:
         # Header with warning if duplicate
-        title = f"{row['time']} - {row['store_name']}"
+        # Display name based on settings
+        show_translated = st.session_state.get("show_translated", True)
+        display_name = (row["store_name_translated"]
+            if show_translated and row["store_name_translated"]
+            else row["store_name"]
+        )
+
+        title = f"{row['time']} - {display_name}"
         if is_duplicate:
             st.markdown(f"**⚠️ 疑似重複: {title}**")
         else:
@@ -186,6 +193,20 @@ def display_receipt_card(row, storage, cache, duplicates):
             # Prepare for editor
             edit_df = items_df.copy()
 
+            # Helper for display name
+            show_translated = st.session_state.get("show_translated", True)
+
+            if show_translated:
+                # Use translated name if available, else original
+                edit_df["display_name"] = edit_df.apply(
+                    lambda x: x["name_translated"]
+                    if x["name_translated"]
+                    else x["name"],
+                    axis=1,
+                )
+            else:
+                edit_df["display_name"] = edit_df["name"]
+
             # Category options
             categories = list(Config.CATEGORIES.keys())
 
@@ -193,10 +214,18 @@ def display_receipt_card(row, storage, cache, duplicates):
             edited_df = st.data_editor(
                 edit_df,
                 column_config={
-                    "name": "品項名稱",
-                    "unit_price": st.column_config.NumberColumn("單價", min_value=0, format="%.2f"),
-                    "quantity": st.column_config.NumberColumn("數量", min_value=1, step=1),
-                    "total_price": st.column_config.NumberColumn("總價", min_value=0, format="%.2f"),
+                    "display_name": "品項名稱 (顯示)",
+                    "name": "品項名稱 (原文)",
+                    "name_translated": "品項名稱 (翻譯)",
+                    "unit_price": st.column_config.NumberColumn(
+                        "單價", min_value=0, format="%.2f"
+                    ),
+                    "quantity": st.column_config.NumberColumn(
+                        "數量", min_value=1, step=1
+                    ),
+                    "total_price": st.column_config.NumberColumn(
+                        "總價", min_value=0, format="%.2f"
+                    ),
                     "category": st.column_config.SelectboxColumn(
                         "類別",
                         options=categories,
@@ -206,16 +235,31 @@ def display_receipt_card(row, storage, cache, duplicates):
                 },
                 hide_index=True,
                 key=f"editor_{receipt_id}",
-                disabled=["item_id", "receipt_id", "name_translated"],
-                column_order=["name", "category", "subcategory", "unit_price", "quantity", "total_price"]
+                # allow editing name (original) and name_translated
+                disabled=["item_id", "receipt_id", "display_name"],
+                column_order=[
+                    "display_name",
+                    "name",
+                    "name_translated",
+                    "category",
+                    "subcategory",
+                    "unit_price",
+                    "quantity",
+                    "total_price",
+                ],
             )
 
             if st.button("💾 儲存修改", key=f"save_{receipt_id}"):
                 # Recalculate totals based on edited values (optional validation)
                 # For now assume user input is correct, or we can force calc
-                edited_df["total_price"] = edited_df["unit_price"] * edited_df["quantity"]
+                edited_df["total_price"] = (
+                    edited_df["unit_price"] * edited_df["quantity"]
+                )
 
-                if storage.update_items(receipt_id, edited_df):
+                # We need to drop our helper column before saving
+                save_df = edited_df.drop(columns=["display_name"])
+
+                if storage.update_items(receipt_id, save_df):
                     st.success("✅ 已儲存")
                     time.sleep(1)
                     st.rerun()

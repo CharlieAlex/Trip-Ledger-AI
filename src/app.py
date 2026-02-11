@@ -12,7 +12,7 @@ from config import Config
 
 project_root = Path(__file__).parents[1]
 sys.path.append(str(project_root))
-from src.etl.storage import ReceiptStorage  # noqa: E402
+from src.ui.sidebar import render_sidebar
 
 # Page configuration
 st.set_page_config(
@@ -31,31 +31,7 @@ def main():
         st.session_state.initialized = True
 
     # Sidebar
-    with st.sidebar:
-        st.title("🧾 Trip Ledger AI")
-        st.markdown("---")
-
-        # API status
-        if Config.is_gemini_configured():
-            st.success("✅ Gemini API 已設定")
-        else:
-            st.warning("⚠️ 請設定 Gemini API Key")
-
-        if Config.is_maps_configured():
-            st.success("✅ Google Maps API 已設定")
-        else:
-            st.info("ℹ️ Google Maps API 未設定（地圖功能受限）")
-
-        st.markdown("---")
-
-        # Quick stats
-        storage = ReceiptStorage()
-        stats = storage.stats
-
-        st.metric("📝 發票數量", stats["receipt_count"])
-        st.metric("📦 品項數量", stats["item_count"])
-        if stats["total_spending"] > 0:
-            st.metric("💰 總消費", f"{stats['total_spending']:,.0f}")
+    render_sidebar()
 
     # Main content
     st.title("🧾 Trip Ledger AI")

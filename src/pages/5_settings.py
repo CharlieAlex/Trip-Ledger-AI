@@ -1,6 +1,8 @@
 """Settings page - API configuration and app preferences."""
 
 
+import re
+
 import streamlit as st
 
 from src.config import Config
@@ -13,6 +15,44 @@ st.set_page_config(
 )
 
 st.title("⚙️ 設定")
+
+# Language Settings
+st.markdown("### 🌐 語言設定")
+with st.container(border=True):
+    col1, col2 = st.columns(2)
+    with col1:
+        primary_lang = st.text_input(
+            "主要語言 (翻譯目標)",
+            value=Config.PRIMARY_LANGUAGE,
+            help="AI 將把發票內容翻譯成此語言 (例如: Traditional Chinese)"
+        )
+    with col2:
+        dest_lang = st.text_input(
+            "旅遊地語言 (原文)",
+            value=Config.DESTINATION_LANGUAGE,
+            help="發票的主要語言 (例如: Japanese)"
+        )
+
+    if st.button("💾 儲存語言設定"):
+        Config.set_language_settings(primary_lang, dest_lang)
+        env_path = Config.PROJECT_ROOT / ".env"
+        env_content = ""
+        if env_path.exists():
+            env_content = env_path.read_text()
+
+        # Helper to update env var in string
+        def update_env_str(content, key, value):
+            pattern = re.compile(f"^{key}=.*$", re.MULTILINE)
+            if pattern.search(content):
+                return pattern.sub(f"{key}={value}", content)
+            else:
+                return content + f"\n{key}={value}\n"
+
+        env_content = update_env_str(env_content, "PRIMARY_LANGUAGE", primary_lang)
+        env_content = update_env_str(env_content, "DESTINATION_LANGUAGE", dest_lang)
+
+        env_path.write_text(env_content)
+        st.success(f"✅ 語言設定已更新: {dest_lang} -> {primary_lang}")
 
 # API Configuration
 st.markdown("### 🔑 API 設定")

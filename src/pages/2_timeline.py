@@ -7,12 +7,15 @@ import streamlit as st
 
 from src.config import Config
 from src.etl.storage import ReceiptStorage
+from src.ui.sidebar import render_sidebar
 
 st.set_page_config(
     page_title="時間線 | Trip Ledger AI",
     page_icon="📅",
     layout="wide",
 )
+
+render_sidebar()
 
 st.title("📅 消費時間線")
 
@@ -69,26 +72,33 @@ if len(filtered_df) > 0:
     timeline_df = filtered_df.sort_values("timestamp")
     timeline_df["cumulative"] = timeline_df["total"].cumsum()
 
-    if len(filtered_df) > 0:
-        # Sort by timestamp
-        filtered_df["timestamp"] = pd.to_datetime(filtered_df["timestamp"])
-        timeline_df = filtered_df.sort_values("timestamp")
-        timeline_df["cumulative"] = timeline_df["total"].cumsum()
+    # Process data for timeline
+    # We need store names.
+    # Logic: if show_translated, try to use store_name_translated.
+    show_translated = st.session_state.get("show_translated", True)
 
-        # Create Altair chart
-        chart = alt.Chart(timeline_df).mark_line(point=True).encode(
-            x=alt.X("timestamp", title="時間", axis=alt.Axis(format="%Y-%m-%d")),
-            y=alt.Y("cumulative", title="累計金額"),
-            tooltip=[
-                alt.Tooltip("timestamp", title="時間", format="%Y-%m-%d %H:%M"),
-                alt.Tooltip("cumulative", title="累計金額", format=",.0f"),
-                alt.Tooltip("store_name", title="店家"),
-                alt.Tooltip("total", title="單筆金額", format=",.0f")
-            ],
-            color=alt.value("#FF4B4B")
-        ).interactive()
+    # We'll create a display_name column in timeline_df
+    timeline_df["display_name"] = timeline_df.apply(
+        lambda x: x["store_name_translated"]
+        if show_translated and pd.notna(x["store_name_translated"]) and x["store_name_translated"]
+        else x["store_name"],
+        axis=1
+    )
 
-        st.altair_chart(chart, use_container_width=True)
+    # Create Altair chart
+    chart = alt.Chart(timeline_df).mark_line(point=True).encode(
+        x=alt.X("timestamp", title="時間", axis=alt.Axis(format="%Y-%m-%d")),
+        y=alt.Y("cumulative", title="累計金額"),
+        tooltip=[
+            alt.Tooltip("timestamp", title="時間", format="%Y-%m-%d %H:%M"),
+            alt.Tooltip("cumulative", title="累計金額", format=",.0f"),
+            alt.Tooltip("display_name", title="店家"),
+            alt.Tooltip("total", title="單筆金額", format=",.0f")
+        ],
+        color=alt.value("#FF4B4B")
+    ).interactive()
+
+    st.altair_chart(chart, use_container_width=True)
 
 st.markdown("---")
 

@@ -1,17 +1,22 @@
 """Analysis page - Charts and statistics visualization."""
 
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
 from src.config import Config
 from src.etl.storage import ReceiptStorage
+from src.ui.sidebar import render_sidebar
 
 st.set_page_config(
     page_title="分析 | Trip Ledger AI",
     page_icon="📊",
     layout="wide",
 )
+
+# Sidebar
+render_sidebar()
 
 st.title("📊 消費分析")
 
@@ -150,21 +155,35 @@ with tab2:
         st.plotly_chart(fig2, width='stretch')
 
 with tab3:
-    st.markdown("### 店家消費統計")
+    st.markdown("### 🏪 店家分析")
 
     if len(receipts_df) > 0:
-        # Store aggregations
-        store_data = receipts_df.groupby("store_name").agg({
+        # Store Chart - Prepare Data
+        show_translated = st.session_state.get("show_translated", True)
+
+        # Group by store_name (original) for aggregation, but pick a label to display
+        receipts_df["display_name"] = receipts_df.apply(
+            lambda x: x["store_name_translated"]
+            if show_translated and pd.notna(x["store_name_translated"]) and x["store_name_translated"]
+            else x["store_name"],
+            axis=1
+        )
+
+        # We aggregate by display_name directly.
+        # Note: different stores might have same name, which is usually fine to group.
+        # Or different stores with same original name but different translations (unlikely).
+        store_stats = receipts_df.groupby("display_name").agg({
             "total": "sum",
             "receipt_id": "count"
         }).reset_index()
-        store_data.columns = ["store", "total_amount", "visit_count"]
+
+        store_stats.columns = ["store", "total_amount", "visit_count"]
 
         col1, col2 = st.columns(2)
 
         with col1:
             # Chart 1: By Amount
-            top_amount = store_data.sort_values("total_amount", ascending=True).tail(15)  # Top 15
+            top_amount = store_stats.sort_values("total_amount", ascending=True).tail(15)  # Top 15
             fig1 = px.bar(
                 top_amount,
                 x="total_amount",
@@ -181,7 +200,7 @@ with tab3:
 
         with col2:
             # Chart 2: By Count
-            top_count = store_data.sort_values("visit_count", ascending=True).tail(15)  # Top 15
+            top_count = store_stats.sort_values("visit_count", ascending=True).tail(15)  # Top 15
             fig2 = px.bar(
                 top_count,
                 x="visit_count",
