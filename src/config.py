@@ -4,13 +4,13 @@ Handles API tokens, paths, and other settings with support for
 environment variables and .env files.
 """
 
+import json
 import os
 from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
 
-# Load .env file if exists
 load_dotenv()
 
 
@@ -44,16 +44,10 @@ class Config:
     DEFAULT_CURRENCY: str = os.getenv("DEFAULT_CURRENCY", "JPY")
 
     # Category definitions
-    CATEGORIES: dict = {
-        "food": {"emoji": "🍔", "label": "食物", "subcategories": ["meal", "snack", "groceries"]},
-        "beverage": {"emoji": "🥤", "label": "飲料", "subcategories": ["coffee", "alcohol", "soft_drink"]},
-        "transport": {"emoji": "🚃", "label": "交通", "subcategories": ["train", "taxi", "flight", "fuel"]},
-        "lodging": {"emoji": "🏨", "label": "住宿", "subcategories": ["hotel", "hostel", "airbnb"]},
-        "shopping": {"emoji": "🛍️", "label": "購物", "subcategories": ["clothing", "souvenir", "electronics"]},
-        "entertainment": {"emoji": "🎢", "label": "娛樂", "subcategories": ["ticket", "activity", "attraction"]},
-        "health": {"emoji": "💊", "label": "醫療", "subcategories": ["pharmacy", "medical"]},
-        "other": {"emoji": "📦", "label": "其他", "subcategories": ["uncategorized"]},
-    }
+    CATEGORIES_FILE: Path = DATA_DIR / "categories.json"
+
+    # Category definitions (Dynamic)
+    CATEGORIES: dict = {}
 
     @classmethod
     def ensure_directories(cls) -> None:
@@ -61,6 +55,25 @@ class Config:
         cls.PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
         cls.CACHE_DIR.mkdir(parents=True, exist_ok=True)
         cls.EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
+        # Load categories
+        if cls.CATEGORIES_FILE.exists():
+            try:
+                with open(cls.CATEGORIES_FILE, encoding="utf-8") as f:
+                    cls.CATEGORIES = json.load(f)
+            except Exception:
+                # Fallback or empty, but usually file should exist
+                pass
+        else:
+            # Create default if not exists (although we just created it)
+            pass
+
+    @classmethod
+    def save_categories(cls, categories: dict) -> None:
+        """Save categories to JSON file."""
+        cls.CATEGORIES = categories
+        with open(cls.CATEGORIES_FILE, "w", encoding="utf-8") as f:
+            json.dump(categories, f, ensure_ascii=False, indent=4)
 
     @classmethod
     def is_gemini_configured(cls) -> bool:
@@ -93,6 +106,11 @@ class Config:
     def get_category_label(cls, category: str) -> str:
         """Get label for a category."""
         return cls.CATEGORIES.get(category, {}).get("label", "其他")
+
+    @classmethod
+    def get_subcategories(cls, category: str) -> list[str]:
+        """Get subcategories for a category."""
+        return cls.CATEGORIES.get(category, {}).get("subcategories", [])
 
 
 # Initialize directories on import

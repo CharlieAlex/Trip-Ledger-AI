@@ -98,6 +98,104 @@ with st.expander("Google Maps API", expanded=False):
 
 st.markdown("---")
 
+# Category Management
+st.markdown("### 🏷️ 類別管理")
+
+with st.expander("編輯類別與子類別", expanded=False):
+    # Select category to edit
+    category_keys = list(Config.CATEGORIES.keys())
+    # Map labels for display
+    cat_options = {k: f"{Config.get_category_emoji(k)} {Config.get_category_label(k)}" for k in category_keys}
+
+    selected_key = st.selectbox(
+        "選擇要編輯的類別",
+        options=category_keys,
+        format_func=lambda x: cat_options[x]
+    )
+
+    if selected_key:
+        current_data = Config.CATEGORIES[selected_key]
+
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            new_emoji = st.text_input("Emoji", value=current_data.get("emoji", ""))
+        with col2:
+            new_label = st.text_input("顯示名稱", value=current_data.get("label", ""))
+
+        # Subcategories editor
+        current_subs = current_data.get("subcategories", [])
+        # Convert to dataframe for editor
+        import pandas as pd
+        sub_df = pd.DataFrame({"子類別": current_subs})
+
+        st.markdown("#### 子類別列表")
+        edited_sub_df = st.data_editor(
+            sub_df,
+            num_rows="dynamic",
+            use_container_width=True,
+            hide_index=True,
+            key=f"sub_edit_{selected_key}"
+        )
+
+        if st.button("💾 儲存變更"):
+            # Update config object
+            updated_subs = [x for x in edited_sub_df["子類別"].tolist() if x and x.strip()]
+
+            Config.CATEGORIES[selected_key]["emoji"] = new_emoji
+            Config.CATEGORIES[selected_key]["label"] = new_label
+            Config.CATEGORIES[selected_key]["subcategories"] = updated_subs
+
+            # Save to file
+            Config.save_categories(Config.CATEGORIES)
+            st.success("✅ 類別設定已儲存")
+            st.rerun()
+
+    st.markdown("---")
+    if st.button("⚠️ 重置為預設值", help="將所有類別設定還原為系統預設值"):
+        # Default categories
+        defaults = {
+            "food": {
+                "emoji": "🍔",
+                "label": "食物",
+                "subcategories": ["正餐", "點心", "食材/雜貨", "早餐", "午餐", "晚餐", "飲料"]
+            },
+            "transport": {
+                "emoji": "🚃",
+                "label": "交通",
+                "subcategories": ["電車/地鐵", "計程車/Uber", "機票", "租車/加油", "巴士", "新幹線"]
+            },
+            "lodging": {
+                "emoji": "🏨",
+                "label": "住宿",
+                "subcategories": ["飯店", "民宿/Airbnb", "溫泉旅館"]
+            },
+            "shopping": {
+                "emoji": "🛍️",
+                "label": "購物",
+                "subcategories": ["生活用品", "衣服/飾品", "伴手禮(食)", "伴手禮(玩)", "藥妝", "電器", "雜貨"]
+            },
+            "entertainment": {
+                "emoji": "🎢",
+                "label": "娛樂",
+                "subcategories": ["門票", "體驗活動", "展覽", "遊戲"]
+            },
+            "health": {
+                "emoji": "💊",
+                "label": "醫療",
+                "subcategories": ["藥品", "看診"]
+            },
+            "other": {
+                "emoji": "📦",
+                "label": "其他",
+                "subcategories": ["未分類", "服務費", "稅金"]
+            }
+        }
+        Config.save_categories(defaults)
+        st.success("✅ 已重置為預設值")
+        st.rerun()
+
+st.markdown("---")
+
 
 # Export
 st.markdown("### 📤 匯出報告")
