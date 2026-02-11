@@ -199,6 +199,37 @@ class ReceiptStorage:
         mask = (df["date"] >= start_date) & (df["date"] <= end_date)
         return df[mask]
 
+    def find_duplicates(self) -> dict[str, list[str]]:
+        """Find potential duplicate receipts.
+
+        Groups receipts by date, time, and total amount.
+
+        Returns:
+            Dict mapping a key (date_time_total) to list of receipt_ids
+        """
+        df = self.load_receipts()
+        if len(df) == 0:
+            return {}
+
+        # Create a grouping key
+        df["dup_key"] = df.apply(
+            lambda x: f"{x['date']}_{x['time']}_{float(x['total']):.2f}",
+            axis=1
+        )
+
+        # Find duplicates
+        dups = df[df.duplicated(subset=["dup_key"], keep=False)]
+
+        if len(dups) == 0:
+            return {}
+
+        # Group by key
+        result = {}
+        for key, group in dups.groupby("dup_key"):
+            result[key] = group["receipt_id"].tolist()
+
+        return result
+
     def get_spending_by_category(self) -> pd.DataFrame:
         """Get total spending by category.
 

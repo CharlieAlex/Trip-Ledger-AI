@@ -4,9 +4,7 @@
 import streamlit as st
 
 from src.config import Config
-from src.etl.cache import ProcessingCache
 from src.etl.exporter import ReportExporter
-from src.etl.storage import ReceiptStorage
 
 st.set_page_config(
     page_title="設定 | Trip Ledger AI",
@@ -100,51 +98,6 @@ with st.expander("Google Maps API", expanded=False):
 
 st.markdown("---")
 
-# Data Management
-st.markdown("### 📁 資料管理")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.markdown("#### 快取")
-    cache = ProcessingCache()
-    stats = cache.stats
-    st.write(f"已處理: {stats['success_count']} 筆")
-    st.write(f"失敗: {stats['failed_count']} 筆")
-
-    if st.button("🗑️ 清除快取"):
-        cache.clear()
-        st.success("快取已清除")
-        st.rerun()
-
-with col2:
-    st.markdown("#### 資料")
-    storage = ReceiptStorage()
-    data_stats = storage.stats
-    st.write(f"發票: {data_stats['receipt_count']} 筆")
-    st.write(f"品項: {data_stats['item_count']} 筆")
-
-    if st.button("🗑️ 清除所有資料", type="secondary"):
-        if Config.RECEIPTS_CSV.exists():
-            Config.RECEIPTS_CSV.unlink()
-        if Config.ITEMS_CSV.exists():
-            Config.ITEMS_CSV.unlink()
-        st.success("資料已清除")
-        st.rerun()
-
-with col3:
-    st.markdown("#### 照片")
-    photos = list(Config.PHOTOS_DIR.glob("*"))
-    photos = [p for p in photos if p.suffix.lower() in Config.SUPPORTED_IMAGE_EXTENSIONS]
-    st.write(f"照片: {len(photos)} 張")
-
-    if st.button("🗑️ 清除照片"):
-        for photo in photos:
-            photo.unlink()
-        st.success("照片已清除")
-        st.rerun()
-
-st.markdown("---")
 
 # Export
 st.markdown("### 📤 匯出報告")
