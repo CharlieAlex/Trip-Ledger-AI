@@ -175,7 +175,7 @@ with st.expander("編輯類別與子類別", expanded=False):
         edited_sub_df = st.data_editor(
             sub_df,
             num_rows="dynamic",
-            use_container_width=True,
+            width='stretch',
             hide_index=True,
             key=f"sub_edit_{selected_key}"
         )

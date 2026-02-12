@@ -174,7 +174,7 @@ def display_receipt_card(row, storage, cache, duplicates):
         # Image (if exists)
         image_path = Path(Config.PHOTOS_DIR) / Path(row["source_image"]).name
         if image_path.exists():
-            st.image(str(image_path), width=300)
+            st.image(str(image_path), width='stretch')
         else:
             st.text("照片遺失")
 

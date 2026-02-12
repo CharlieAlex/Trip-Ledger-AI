@@ -98,7 +98,7 @@ if len(filtered_df) > 0:
         color=alt.value("#FF4B4B")
     ).interactive()
 
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, width='stretch')
 
 st.markdown("---")
 

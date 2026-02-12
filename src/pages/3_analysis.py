@@ -81,7 +81,7 @@ with tab1:
                 color_continuous_scale="Blues",
             )
             fig.update_layout(showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
         else:
             # Subcategory aggregation
@@ -112,7 +112,7 @@ with tab1:
                 color_continuous_scale="Greens",
             )
             fig.update_layout(showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
     else:
         st.info("尚無品項資料")
@@ -196,7 +196,7 @@ with tab3:
                 color_continuous_scale="Oranges"
             )
             fig1.update_layout(showlegend=False)
-            st.plotly_chart(fig1, use_container_width=True)
+            st.plotly_chart(fig1, width='stretch')
 
         with col2:
             # Chart 2: By Count
@@ -213,7 +213,7 @@ with tab3:
                 color_continuous_scale="Purples"
             )
             fig2.update_layout(showlegend=False)
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, width='stretch')
 
     else:
         st.info("尚無發票資料")
