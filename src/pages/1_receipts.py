@@ -1,11 +1,13 @@
 """Receipt Manager - Upload, view, and manage receipts."""
 
+import io
 import time
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 from loguru import logger
+from PIL import Image
 
 from src.config import Config
 from src.etl.cache import ProcessingCache
@@ -37,26 +39,33 @@ def main():
     storage = ReceiptStorage()
     cache = ProcessingCache()
 
-    # --- Section 1: Upload ---
+    # Initialize session state for processed images
+    if "processed_images" not in st.session_state:
+        st.session_state.processed_images = {}
 
     render_sidebar()
 
-    with st.expander("📤 上傳新發票", expanded=False):
-        st.markdown("### 上傳照片")
+    # --- Section 1: Upload ---
+    with st.expander("📤 上傳新發票", expanded=True):
+        st.markdown("### 1. 上傳照片")
         uploaded_files = st.file_uploader(
             "拖曳或選擇檔案",
             type=["jpg", "jpeg", "png", "heic", "heif"],
             accept_multiple_files=True,
             help="支援一次上傳多張照片",
+            key="upload_uploader"
         )
 
         col1, col2 = st.columns([1, 4])
         with col1:
             force_reprocess = st.checkbox("強制重新處理", help="忽略快取，重新辨識所有照片")
 
-        if uploaded_files:
-            if st.button("🚀 開始處理", type="primary"):
-                process_uploads(uploaded_files, force_reprocess)
+        # Handle file upload changes
+        _handle_file_upload_changes(uploaded_files)
+
+        # Handle image preview and processing
+        if st.session_state.processed_images:
+            _handle_image_preview_and_processing(uploaded_files, force_reprocess)
 
     st.divider()
 
@@ -99,6 +108,169 @@ def main():
         with col2:
             if st.button("清除所有資料", type="primary", help="刪除所有發票、CSV 與照片檔案"):
                 confirm_clear_data()
+
+
+def resize_image_bytes(image_bytes, max_long_side=768):
+    """Resize image bytes to fit within max_long_side.
+
+    Args:
+        image_bytes (bytes): The original image bytes.
+        max_long_side (int): The maximum length for the long side of the image.
+
+    Returns:
+        bytes: The resized image bytes (or original if smaller/error).
+    """
+    try:
+        image = Image.open(io.BytesIO(image_bytes))
+        width, height = image.size
+
+        # Check if resize is needed
+        if max(width, height) <= max_long_side:
+            return image_bytes
+
+        # Calculate new dimensions
+        ratio = max_long_side / max(width, height)
+        new_size = (int(width * ratio), int(height * ratio))
+
+        # Resize
+        image = image.resize(new_size, Image.Resampling.LANCZOS)
+
+        # Save to bytes
+        buf = io.BytesIO()
+        # Preserve format if possible, default to JPEG
+        fmt = image.format if image.format else "JPEG"
+        image.save(buf, format=fmt, quality=85)
+        return buf.getvalue()
+    except Exception as e:
+        logger.error(f"Resize failed: {e}")
+        return image_bytes
+
+
+def _handle_file_upload_changes(uploaded_files):
+    """Handle file upload changes and conversion."""
+    current_filenames = {f.name for f in uploaded_files}
+    processed_filenames = set(st.session_state.processed_images.keys())
+
+    if current_filenames == processed_filenames:
+        return
+
+    st.info("偵測到新上傳檔案，請點擊下方按鈕進行縮圖處理。")
+
+    if st.button("🔄 轉換圖片大小 (Resize Images)", type="primary"):
+        _resize_uploaded_images(uploaded_files)
+
+
+def _resize_uploaded_images(uploaded_files):
+    """Resize all uploaded images."""
+    st.session_state.processed_images = {}
+    progress_text = st.empty()
+    progress_bar = st.progress(0)
+
+    for i, uploaded_file in enumerate(uploaded_files):
+        progress_text.text(f"正在處理: {uploaded_file.name}")
+        bytes_data = uploaded_file.getvalue()
+        resized_data = resize_image_bytes(bytes_data, 768)
+
+        st.session_state.processed_images[uploaded_file.name] = {
+            "original": bytes_data,
+            "resized": resized_data,
+            "current_max": 768,
+            "type": uploaded_file.type
+        }
+        progress_bar.progress((i + 1) / len(uploaded_files))
+
+    progress_text.empty()
+    progress_bar.empty()
+    st.rerun()
+
+
+def _handle_image_preview_and_processing(uploaded_files, force_reprocess):
+    """Handle image preview, adjustment and processing."""
+    st.divider()
+    st.markdown("### 2. 預覽與調整 (Preview & Adjust)")
+
+    active_files = [f for f in uploaded_files if f.name in st.session_state.processed_images]
+
+    if len(active_files) != len(uploaded_files):
+        st.warning("⚠️ 檔案列表已變更，建議重新轉換圖片。")
+
+    _render_image_previews(active_files)
+
+    st.divider()
+    if st.button("🚀 開始處理 (Start Processing)", type="primary"):
+        _process_final_images(active_files, force_reprocess)
+
+
+def _render_image_previews(active_files):
+    """Render image previews with adjustment controls."""
+    cols = st.columns(5)
+
+    for idx, uploaded_file in enumerate(active_files):
+        file_data = st.session_state.processed_images[uploaded_file.name]
+
+        with cols[idx % 3]:
+            st.image(file_data["resized"], caption=uploaded_file.name, width='stretch')
+            _render_image_controls(idx, uploaded_file, file_data)
+
+
+def _render_image_controls(idx, uploaded_file, file_data):
+    """Render controls for individual image adjustment."""
+    c1, c2 = st.columns(2)
+
+    with c1:
+        if st.button("⏪ 還原", key=f"rest_{idx}_{uploaded_file.name}"):
+            file_data["resized"] = file_data["original"]
+            file_data["current_max"] = 0  # 0 means original/no resize logic
+            st.rerun()
+
+    with c2:
+        new_max = st.number_input(
+            "長邊 (px)",
+            value=file_data["current_max"] if file_data["current_max"] > 0 else 768,
+            key=f"dim_{idx}_{uploaded_file.name}"
+        )
+        if st.button("套用", key=f"apply_{idx}_{uploaded_file.name}"):
+            file_data["resized"] = resize_image_bytes(file_data["original"], int(new_max))
+            file_data["current_max"] = int(new_max)
+            st.rerun()
+
+
+def _process_final_images(active_files, force_reprocess):
+    """Process final images and clean up session state."""
+    final_files = [
+        _create_processed_file(uploaded_file)
+        for uploaded_file in active_files
+    ]
+
+    process_uploads(final_files, force_reprocess)
+
+    # Clear session state
+    st.session_state.processed_images = {}
+    st.session_state.manual_edit_mode = False
+    st.rerun()
+
+
+def _create_processed_file(uploaded_file):
+    """Create a ProcessedFile object from uploaded file data."""
+    file_data = st.session_state.processed_images[uploaded_file.name]
+
+    class ProcessedFile:
+        def __init__(self, name, data, type):
+            self.name = name
+            self.data = data
+            self.type = type
+
+        def getbuffer(self):
+            return self.data
+
+        def getvalue(self):
+            return self.data
+
+    return ProcessedFile(
+        uploaded_file.name,
+        file_data["resized"],
+        file_data["type"]
+    )
 
 
 def process_uploads(uploaded_files, force_reprocess):
