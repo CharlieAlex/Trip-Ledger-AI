@@ -33,19 +33,16 @@ class InvoiceParser:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        force_reprocess: bool = False,
     ):
         """Initialize parser.
 
         Args:
             api_key: Optional Gemini API key
-            force_reprocess: If True, ignore cache and reprocess all
         """
         self.gemini_client = GeminiClient(api_key=api_key)
         self.preprocessor = ImagePreprocessor()
         self.classifier = CategoryClassifier()
         self.cache = ProcessingCache()
-        self.force_reprocess = force_reprocess
 
     def process_image(self, image_path: str | Path) -> ProcessingResult:
         """Process a single invoice image.
@@ -76,7 +73,7 @@ class InvoiceParser:
 
         # Check cache
         file_hash = get_image_hash(image_path)
-        if not self.force_reprocess and self.cache.is_processed(file_hash):
+        if self.cache.is_processed(file_hash):
             return ProcessingResult(
                 source_image=str(image_path),
                 success=True,
@@ -326,11 +323,6 @@ def main():
         default=str(Config.PHOTOS_DIR),
         help="Directory containing invoice photos",
     )
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Force reprocessing (ignore cache)",
-    )
 
     args = parser.parse_args()
 
@@ -340,7 +332,7 @@ def main():
         logger.error("Set it in .env file or as environment variable")
         sys.exit(1)
 
-    invoice_parser = InvoiceParser(force_reprocess=args.force)
+    invoice_parser = InvoiceParser()
 
     if args.file:
         # Process single file
@@ -359,8 +351,6 @@ def main():
     else:
         # Process directory
         logger.info(f"Processing directory: {args.dir}")
-        if args.force:
-            logger.warning("(Force mode: ignoring cache)")
 
         def progress(current, total, filename):
             logger.info(f"[{current}/{total}] {filename}")

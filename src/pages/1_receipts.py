@@ -56,16 +56,12 @@ def main():
             key="upload_uploader"
         )
 
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            force_reprocess = st.checkbox("強制重新處理", help="忽略快取，重新辨識所有照片")
-
         # Handle file upload changes
         _handle_file_upload_changes(uploaded_files)
 
         # Handle image preview and processing
         if st.session_state.processed_images:
-            _handle_image_preview_and_processing(uploaded_files, force_reprocess)
+            _handle_image_preview_and_processing(uploaded_files)
 
     st.divider()
 
@@ -184,7 +180,7 @@ def _resize_uploaded_images(uploaded_files):
     st.rerun()
 
 
-def _handle_image_preview_and_processing(uploaded_files, force_reprocess):
+def _handle_image_preview_and_processing(uploaded_files):
     """Handle image preview, adjustment and processing."""
     st.divider()
     st.markdown("### 2. 預覽與調整 (Preview & Adjust)")
@@ -198,7 +194,7 @@ def _handle_image_preview_and_processing(uploaded_files, force_reprocess):
 
     st.divider()
     if st.button("🚀 開始處理 (Start Processing)", type="primary"):
-        _process_final_images(active_files, force_reprocess)
+        _process_final_images(active_files)
 
 
 def _render_image_previews(active_files):
@@ -235,14 +231,14 @@ def _render_image_controls(idx, uploaded_file, file_data):
             st.rerun()
 
 
-def _process_final_images(active_files, force_reprocess):
+def _process_final_images(active_files):
     """Process final images and clean up session state."""
     final_files = [
         _create_processed_file(uploaded_file)
         for uploaded_file in active_files
     ]
 
-    process_uploads(final_files, force_reprocess)
+    process_uploads(final_files)
 
     # Clear session state
     st.session_state.processed_images = {}
@@ -273,7 +269,7 @@ def _create_processed_file(uploaded_file):
     )
 
 
-def process_uploads(uploaded_files, force_reprocess):
+def process_uploads(uploaded_files):
     """Handle file uploads and processing."""
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -287,7 +283,7 @@ def process_uploads(uploaded_files, force_reprocess):
         saved_paths.append(save_path)
 
     # Process
-    parser = InvoiceParser(force_reprocess=force_reprocess)
+    parser = InvoiceParser()
     storage = ReceiptStorage()
 
     success_count = 0
@@ -453,7 +449,12 @@ def reprocess_receipt(source_image):
         return
 
     with st.spinner("重新處理中..."):
-        parser = InvoiceParser(force_reprocess=True)
+        # Clear cache for this file so parser will re-process it
+        cache = ProcessingCache()
+        file_hash = get_image_hash(file_path)
+        cache.remove(file_hash)
+
+        parser = InvoiceParser()
         storage = ReceiptStorage()
 
         result = parser.process_image(file_path)
