@@ -69,15 +69,11 @@ st.markdown("### 📈 累計消費趨勢")
 if len(filtered_df) > 0:
     # Sort by timestamp
     filtered_df["timestamp"] = pd.to_datetime(filtered_df["timestamp"])
-    timeline_df = filtered_df.sort_values("timestamp")
+    timeline_df = filtered_df.sort_values("timestamp").copy()
     timeline_df["cumulative"] = timeline_df["total"].cumsum()
 
-    # Process data for timeline
-    # We need store names.
-    # Logic: if show_translated, try to use store_name_translated.
+    # Store display names
     show_translated = st.session_state.get("show_translated", True)
-
-    # We'll create a display_name column in timeline_df
     timeline_df["display_name"] = timeline_df.apply(
         lambda x: x["store_name_translated"]
         if show_translated and pd.notna(x["store_name_translated"]) and x["store_name_translated"]
@@ -85,20 +81,44 @@ if len(filtered_df) > 0:
         axis=1
     )
 
-    # Create Altair chart
-    chart = alt.Chart(timeline_df).mark_line(point=True).encode(
-        x=alt.X("timestamp", title="時間", axis=alt.Axis(format="%Y-%m-%d")),
-        y=alt.Y("cumulative", title="累計金額"),
-        tooltip=[
-            alt.Tooltip("timestamp", title="時間", format="%Y-%m-%d %H:%M"),
-            alt.Tooltip("cumulative", title="累計金額", format=",.0f"),
-            alt.Tooltip("display_name", title="店家"),
-            alt.Tooltip("total", title="單筆金額", format=",.0f")
-        ],
-        color=alt.value("#FF4B4B")
-    ).interactive()
+    # Insert a starting point at the earliest date 00:00:00 with cumulative = 0
+    earliest_date = timeline_df["timestamp"].min().normalize()  # 00:00:00
+    origin_row = pd.DataFrame([{
+        "timestamp": earliest_date,
+        "cumulative": 0,
+        "display_name": "",
+        "total": 0,
+    }])
+    timeline_df = pd.concat([origin_row, timeline_df], ignore_index=True)
 
-    st.altair_chart(chart, width='stretch')
+    # Use date string for x-axis so each day shows only once
+    timeline_df["date_label"] = timeline_df["timestamp"].dt.strftime("%Y-%m-%d")
+
+    # Area chart (filled) + line + points
+    base = alt.Chart(timeline_df).encode(
+        x=alt.X("timestamp:T", title="日期",
+                axis=alt.Axis(format="%m/%d", tickCount="day")),
+        y=alt.Y("cumulative:Q", title="累計金額"),
+    )
+
+    area = base.mark_area(
+        opacity=0.2,
+        color="#FF4B4B",
+    )
+
+    line = base.mark_line(color="#FF4B4B")
+
+    points = base.mark_circle(size=50, color="#FF4B4B").encode(
+        tooltip=[
+            alt.Tooltip("timestamp:T", title="時間", format="%Y-%m-%d %H:%M"),
+            alt.Tooltip("cumulative:Q", title="累計金額", format=",.0f"),
+            alt.Tooltip("display_name:N", title="店家"),
+            alt.Tooltip("total:Q", title="單筆金額", format=",.0f"),
+        ]
+    )
+
+    chart = (area + line + points).interactive()
+    st.altair_chart(chart, width="stretch")
 
 st.markdown("---")
 

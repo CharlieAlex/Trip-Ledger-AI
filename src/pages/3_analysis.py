@@ -60,59 +60,37 @@ with tab1:
             lambda x: f"{Config.get_category_emoji(x)} {Config.get_category_label(x)}"
         )
 
-        # View selection
-        view_type = st.radio("檢視模式", ["大類別", "子類別"], horizontal=True)
+        # Subcategory chart colored by main category
+        items_df["subcategory_display"] = items_df.apply(
+            lambda x: (
+                x["subcategory"]
+                if x["subcategory"]
+                else "(未分類)"
+            ),
+            axis=1,
+        )
 
-        if view_type == "大類別":
-            # Main category aggregation
-            cat_data = items_df.groupby("category_label")["total_price"].sum().reset_index()
-            cat_data.columns = ["label", "total"]
-            cat_data = cat_data.sort_values("total", ascending=True)
+        sub_data = items_df.groupby(["category_label", "subcategory_display"]).agg(
+            total=("total_price", "sum")
+        ).reset_index()
+        sub_data = sub_data.sort_values("total", ascending=True)
 
-            fig = px.bar(
-                cat_data,
-                x="total",
-                y="label",
-                orientation="h",
-                title="各類別消費金額",
-                labels={"total": "金額", "label": "類別"},
-                text_auto=".2s",
-                color="total",
-                color_continuous_scale="Blues",
-            )
-            fig.update_layout(showlegend=False)
-            st.plotly_chart(fig, width='stretch')
-
-        else:
-            # Subcategory aggregation
-            # Handle empty subcategories
-            items_df["subcategory_display"] = items_df.apply(
-                lambda x: (
-                    f"{x['category_label']} - {x['subcategory']}"
-                    if x["subcategory"]
-                    else f"{x['category_label']} (未分類)"
-                ),
-                axis=1,
-            )
-
-            sub_data = items_df.groupby("subcategory_display")["total_price"].sum().reset_index()
-            sub_data.columns = ["label", "total"]
-            sub_data = sub_data.sort_values("total", ascending=True)
-
-            fig = px.bar(
-                sub_data,
-                x="total",
-                y="label",
-                orientation="h",
-                title="子類別消費金額",
-                labels={"total": "金額", "label": "子類別"},
-                text_auto=".2s",
-                height=max(400, len(sub_data) * 30),  # Adjust height for many items
-                color="total",
-                color_continuous_scale="Greens",
-            )
-            fig.update_layout(showlegend=False)
-            st.plotly_chart(fig, width='stretch')
+        fig = px.bar(
+            sub_data,
+            x="total",
+            y="subcategory_display",
+            orientation="h",
+            title="各類別消費金額（子類別）",
+            labels={"total": "金額", "subcategory_display": "子類別", "category_label": "大類別"},
+            text_auto=".2s",
+            height=max(400, len(sub_data) * 30),
+            color="category_label",
+        )
+        fig.update_layout(
+            legend_title_text="大類別",
+            yaxis={"categoryorder": "total ascending"},
+        )
+        st.plotly_chart(fig, width="stretch")
 
     else:
         st.info("尚無品項資料")
@@ -127,22 +105,29 @@ with tab2:
             "receipt_id": "count",
         }).reset_index()
         daily_data.columns = ["date", "total", "count"]
+        daily_data["date"] = pd.to_datetime(daily_data["date"])
         daily_data = daily_data.sort_values("date")
 
-        # Line chart
+        # Bar chart with capped width
+        n_days = len(daily_data)
+        bar_width_ms = min(0.8, 8 / max(n_days, 1)) * 86400000  # ms per day, cap width
+
         fig = go.Figure()
         fig.add_trace(go.Bar(
             x=daily_data["date"],
             y=daily_data["total"],
             name="消費金額",
             marker_color="steelblue",
+            width=bar_width_ms,
         ))
         fig.update_layout(
             title="每日消費金額",
             xaxis_title="日期",
             yaxis_title="金額",
+            xaxis={"type": "date", "tickformat": "%Y-%m-%d"},
+            bargap=0.3,
         )
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, width="stretch")
 
         # Receipt count chart
         fig2 = px.line(
@@ -152,7 +137,10 @@ with tab2:
             title="每日發票數量",
             markers=True,
         )
-        st.plotly_chart(fig2, width='stretch')
+        fig2.update_layout(
+            xaxis={"type": "date", "tickformat": "%Y-%m-%d"},
+        )
+        st.plotly_chart(fig2, width="stretch")
 
 with tab3:
     st.markdown("### 🏪 店家分析")
@@ -161,7 +149,6 @@ with tab3:
         # Store Chart - Prepare Data
         show_translated = st.session_state.get("show_translated", True)
 
-        # Group by store_name (original) for aggregation, but pick a label to display
         receipts_df["display_name"] = receipts_df.apply(
             lambda x: x["store_name_translated"]
             if show_translated and pd.notna(x["store_name_translated"]) and x["store_name_translated"]
@@ -169,21 +156,29 @@ with tab3:
             axis=1
         )
 
-        # We aggregate by display_name directly.
-        # Note: different stores might have same name, which is usually fine to group.
-        # Or different stores with same original name but different translations (unlikely).
-        store_stats = receipts_df.groupby("display_name").agg({
+        # Aggregate: total amount per store
+        store_amount = receipts_df.groupby("display_name").agg({
             "total": "sum",
-            "receipt_id": "count"
         }).reset_index()
+        store_amount.columns = ["store", "total_amount"]
 
-        store_stats.columns = ["store", "total_amount", "visit_count"]
+        # Aggregate: item count per store (join items with receipts)
+        if len(items_df) > 0:
+            items_with_store = items_df.merge(
+                receipts_df[["receipt_id", "display_name"]].drop_duplicates(),
+                on="receipt_id",
+                how="left",
+            )
+            store_item_count = items_with_store.groupby("display_name").size().reset_index(name="item_count")
+            store_item_count.columns = ["store", "item_count"]
+        else:
+            store_item_count = pd.DataFrame(columns=["store", "item_count"])
 
         col1, col2 = st.columns(2)
 
         with col1:
             # Chart 1: By Amount
-            top_amount = store_stats.sort_values("total_amount", ascending=True).tail(15)  # Top 15
+            top_amount = store_amount.sort_values("total_amount", ascending=True).tail(15)
             fig1 = px.bar(
                 top_amount,
                 x="total_amount",
@@ -196,24 +191,27 @@ with tab3:
                 color_continuous_scale="Oranges"
             )
             fig1.update_layout(showlegend=False)
-            st.plotly_chart(fig1, width='stretch')
+            st.plotly_chart(fig1, width="stretch")
 
         with col2:
-            # Chart 2: By Count
-            top_count = store_stats.sort_values("visit_count", ascending=True).tail(15)  # Top 15
-            fig2 = px.bar(
-                top_count,
-                x="visit_count",
-                y="store",
-                orientation="h",
-                title="店家光顧次數排名 (前15名)",
-                labels={"visit_count": "次數", "store": "店家"},
-                text_auto=True,
-                color="visit_count",
-                color_continuous_scale="Purples"
-            )
-            fig2.update_layout(showlegend=False)
-            st.plotly_chart(fig2, width='stretch')
+            # Chart 2: By Item Count
+            if len(store_item_count) > 0:
+                top_items = store_item_count.sort_values("item_count", ascending=True).tail(15)
+                fig2 = px.bar(
+                    top_items,
+                    x="item_count",
+                    y="store",
+                    orientation="h",
+                    title="店家商品數量排名 (前15名)",
+                    labels={"item_count": "商品數量", "store": "店家"},
+                    text_auto=True,
+                    color="item_count",
+                    color_continuous_scale="Purples"
+                )
+                fig2.update_layout(showlegend=False)
+                st.plotly_chart(fig2, width="stretch")
+            else:
+                st.info("尚無品項資料")
 
     else:
         st.info("尚無發票資料")
@@ -222,25 +220,35 @@ with tab4:
     st.markdown("### 品項明細")
 
     if len(items_df) > 0:
-        # Add category display
+        # Add category display columns
         display_df = items_df.copy()
         display_df["category_display"] = display_df["category"].apply(
             lambda x: f"{Config.get_category_emoji(x)} {Config.get_category_label(x)}"
         )
+        display_df["subcategory_display"] = display_df["subcategory"].fillna("(未分類)")
 
         # Filters
         col1, col2 = st.columns(2)
         with col1:
-            categories = ["全部"] + list(display_df["category_display"].unique())
-            selected_category = st.selectbox("篩選類別", categories)
+            categories = ["全部"] + sorted(display_df["category_display"].unique().tolist())
+            selected_category = st.selectbox("篩選大類別", categories)
 
+        # Filter by main category first
+        filtered = display_df.copy()
         if selected_category != "全部":
-            display_df = display_df[display_df["category_display"] == selected_category]
+            filtered = filtered[filtered["category_display"] == selected_category]
 
-        # Display table
-        table_df = display_df[["name", "category_display", "quantity", "total_price"]].copy()
-        table_df.columns = ["品項名稱", "類別", "數量", "金額"]
-        st.dataframe(table_df, width='stretch', hide_index=True)
+        with col2:
+            subcategories = ["全部"] + sorted(filtered["subcategory_display"].unique().tolist())
+            selected_subcategory = st.selectbox("篩選子類別", subcategories)
+
+        if selected_subcategory != "全部":
+            filtered = filtered[filtered["subcategory_display"] == selected_subcategory]
+
+        # Display table with both category columns
+        table_df = filtered[["name", "category_display", "subcategory_display", "quantity", "total_price"]].copy()
+        table_df.columns = ["品項名稱", "大類別", "子類別", "數量", "金額"]
+        st.dataframe(table_df, width="stretch", hide_index=True)
 
         # Download
         st.download_button(
