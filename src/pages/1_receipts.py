@@ -4,6 +4,7 @@ import io
 import time
 from pathlib import Path
 
+import fitz  # PyMuPDF
 import pandas as pd
 import streamlit as st
 from loguru import logger
@@ -39,9 +40,11 @@ def main():
     storage = ReceiptStorage()
     cache = ProcessingCache()
 
-    # Initialize session state for processed images
+    # Initialize session state for processed images and sources
     if "processed_images" not in st.session_state:
         st.session_state.processed_images = {}
+    if "processed_sources" not in st.session_state:
+        st.session_state.processed_sources = set()
 
     render_sidebar()
 
@@ -50,9 +53,9 @@ def main():
         st.markdown("### 1. 上傳照片")
         uploaded_files = st.file_uploader(
             "拖曳或選擇檔案",
-            type=["jpg", "jpeg", "png", "heic", "heif"],
+            type=["jpg", "jpeg", "png", "heic", "heif", "pdf"],
             accept_multiple_files=True,
-            help="支援一次上傳多張照片",
+            help="支援一次上傳多張照片或 PDF",
             key="upload_uploader"
         )
 
@@ -145,9 +148,9 @@ def resize_image_bytes(image_bytes, max_long_side=768):
 def _handle_file_upload_changes(uploaded_files):
     """Handle file upload changes and conversion."""
     current_filenames = {f.name for f in uploaded_files}
-    processed_filenames = set(st.session_state.processed_images.keys())
+    processed_sources = st.session_state.processed_sources
 
-    if current_filenames == processed_filenames:
+    if current_filenames == processed_sources:
         return
 
     st.info("偵測到新上傳檔案，請點擊下方按鈕進行縮圖處理。")
@@ -157,23 +160,56 @@ def _handle_file_upload_changes(uploaded_files):
 
 
 def _resize_uploaded_images(uploaded_files):
-    """Resize all uploaded images."""
+    """Resize all uploaded images, handling PDFs by splitting them."""
     st.session_state.processed_images = {}
+    st.session_state.processed_sources = set()
+
     progress_text = st.empty()
     progress_bar = st.progress(0)
 
+    total_files = len(uploaded_files)
+
     for i, uploaded_file in enumerate(uploaded_files):
         progress_text.text(f"正在處理: {uploaded_file.name}")
-        bytes_data = uploaded_file.getvalue()
-        resized_data = resize_image_bytes(bytes_data, 768)
+        file_bytes = uploaded_file.getvalue()
+        file_type = uploaded_file.type
 
-        st.session_state.processed_images[uploaded_file.name] = {
-            "original": bytes_data,
-            "resized": resized_data,
-            "current_max": 768,
-            "type": uploaded_file.type
-        }
-        progress_bar.progress((i + 1) / len(uploaded_files))
+        # Handle PDF
+        if file_type == "application/pdf" or uploaded_file.name.lower().endswith(".pdf"):
+            try:
+                doc = fitz.open(stream=file_bytes, filetype="pdf")
+                for page_num in range(len(doc)):
+                    page = doc.load_page(page_num)
+                    pix = page.get_pixmap()
+                    img_bytes = pix.tobytes("png")
+
+                    page_name = f"{uploaded_file.name}_page_{page_num+1}.png"
+                    resized_data = resize_image_bytes(img_bytes, 768)
+
+                    st.session_state.processed_images[page_name] = {
+                        "original": img_bytes,
+                        "resized": resized_data,
+                        "current_max": 768,
+                        "type": "image/png"
+                    }
+                doc.close()
+            except Exception as e:
+                logger.error(f"Failed to process PDF {uploaded_file.name}: {e}")
+                st.error(f"PDF 處理失敗: {uploaded_file.name}")
+
+        # Handle Image
+        else:
+            resized_data = resize_image_bytes(file_bytes, 768)
+            st.session_state.processed_images[uploaded_file.name] = {
+                "original": file_bytes,
+                "resized": resized_data,
+                "current_max": 768,
+                "type": uploaded_file.type
+            }
+
+        # Mark source as processed
+        st.session_state.processed_sources.add(uploaded_file.name)
+        progress_bar.progress((i + 1) / total_files)
 
     progress_text.empty()
     progress_bar.empty()
@@ -185,36 +221,45 @@ def _handle_image_preview_and_processing(uploaded_files):
     st.divider()
     st.markdown("### 2. 預覽與調整 (Preview & Adjust)")
 
-    active_files = [f for f in uploaded_files if f.name in st.session_state.processed_images]
+    # We display everything in processed_images
+    # Note: uploaded_files might not 1:1 match processed_images due to PDF splitting
+    # So we just show all processed_images
 
-    if len(active_files) != len(uploaded_files):
+    # Check if we have orphaned images (source file removed)
+    current_filenames = {f.name for f in uploaded_files}
+
+    # Simple check: if processed_sources doesn't match current uploads, warn user
+    if st.session_state.processed_sources != current_filenames:
         st.warning("⚠️ 檔案列表已變更，建議重新轉換圖片。")
 
-    _render_image_previews(active_files)
+    _render_image_previews()
 
     st.divider()
     if st.button("🚀 開始處理 (Start Processing)", type="primary"):
-        _process_final_images(active_files)
+        _process_final_images()
 
 
-def _render_image_previews(active_files):
+def _render_image_previews():
     """Render image previews with adjustment controls."""
     cols = st.columns(5)
 
-    for idx, uploaded_file in enumerate(active_files):
-        file_data = st.session_state.processed_images[uploaded_file.name]
+    # Sort keys for consistent display
+    image_names = sorted(st.session_state.processed_images.keys())
+
+    for idx, name in enumerate(image_names):
+        file_data = st.session_state.processed_images[name]
 
         with cols[idx % 3]:
-            st.image(file_data["resized"], caption=uploaded_file.name, width='stretch')
-            _render_image_controls(idx, uploaded_file, file_data)
+            st.image(file_data["resized"], caption=name, width='stretch')
+            _render_image_controls(idx, name, file_data)
 
 
-def _render_image_controls(idx, uploaded_file, file_data):
+def _render_image_controls(idx, name, file_data):
     """Render controls for individual image adjustment."""
     c1, c2 = st.columns(2)
 
     with c1:
-        if st.button("⏪ 還原", key=f"rest_{idx}_{uploaded_file.name}"):
+        if st.button("⏪ 還原", key=f"rest_{idx}_{name}"):
             file_data["resized"] = file_data["original"]
             file_data["current_max"] = 0  # 0 means original/no resize logic
             st.rerun()
@@ -223,33 +268,33 @@ def _render_image_controls(idx, uploaded_file, file_data):
         new_max = st.number_input(
             "長邊 (px)",
             value=file_data["current_max"] if file_data["current_max"] > 0 else 768,
-            key=f"dim_{idx}_{uploaded_file.name}"
+            key=f"dim_{idx}_{name}"
         )
-        if st.button("套用", key=f"apply_{idx}_{uploaded_file.name}"):
+        if st.button("套用", key=f"apply_{idx}_{name}"):
             file_data["resized"] = resize_image_bytes(file_data["original"], int(new_max))
             file_data["current_max"] = int(new_max)
             st.rerun()
 
 
-def _process_final_images(active_files):
+def _process_final_images():
     """Process final images and clean up session state."""
-    final_files = [
-        _create_processed_file(uploaded_file)
-        for uploaded_file in active_files
-    ]
+    final_files = []
+
+    for name, data in st.session_state.processed_images.items():
+        processed = _create_processed_file(name, data)
+        final_files.append(processed)
 
     process_uploads(final_files)
 
     # Clear session state
     st.session_state.processed_images = {}
+    st.session_state.processed_sources = set()
     st.session_state.manual_edit_mode = False
     st.rerun()
 
 
-def _create_processed_file(uploaded_file):
-    """Create a ProcessedFile object from uploaded file data."""
-    file_data = st.session_state.processed_images[uploaded_file.name]
-
+def _create_processed_file(name, file_data):
+    """Create a ProcessedFile object from file data."""
     class ProcessedFile:
         def __init__(self, name, data, type):
             self.name = name
@@ -263,7 +308,7 @@ def _create_processed_file(uploaded_file):
             return self.data
 
     return ProcessedFile(
-        uploaded_file.name,
+        name,
         file_data["resized"],
         file_data["type"]
     )
