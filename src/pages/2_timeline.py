@@ -68,7 +68,12 @@ st.markdown("### 📈 累計消費趨勢")
 
 if len(filtered_df) > 0:
     # Sort by timestamp
-    filtered_df["timestamp"] = pd.to_datetime(filtered_df["timestamp"])
+    # Construct timestamp from date and time columns to ensure it reflects edits
+    # combining date column (str) and time column (str)
+    filtered_df["timestamp"] = pd.to_datetime(
+        filtered_df["date"].astype(str) + " " + filtered_df["time"].astype(str),
+        format="mixed"
+    )
     timeline_df = filtered_df.sort_values("timestamp").copy()
     timeline_df["cumulative"] = timeline_df["total"].cumsum()
 
