@@ -55,7 +55,7 @@ def main():
         st.markdown("### 📤 開始使用")
         st.markdown("上傳發票照片，讓 AI 自動辨識並記錄。")
         if st.button("前往上傳頁面", type="primary", key="goto_upload"):
-            st.switch_page("pages/1_upload.py")
+            st.switch_page("pages/1_receipts.py")
 
     with col2:
         st.markdown("### 📊 查看分析")
