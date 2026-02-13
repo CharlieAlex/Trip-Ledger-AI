@@ -2,7 +2,6 @@
 
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import streamlit as st
 
 from src.config import Config
@@ -108,24 +107,24 @@ with tab2:
         daily_data["date"] = pd.to_datetime(daily_data["date"])
         daily_data = daily_data.sort_values("date")
 
-        # Bar chart with capped width
-        n_days = len(daily_data)
-        bar_width_ms = min(0.8, 8 / max(n_days, 1)) * 86400000  # ms per day, cap width
-
-        fig = go.Figure()
-        fig.add_trace(go.Bar(
-            x=daily_data["date"],
-            y=daily_data["total"],
-            name="消費金額",
-            marker_color="steelblue",
-            width=bar_width_ms,
-        ))
-        fig.update_layout(
+        # Line chart for Amount
+        fig = px.line(
+            daily_data,
+            x="date",
+            y="total",
             title="每日消費金額",
+            markers=True,
+        )
+        fig.update_traces(line_color="steelblue")
+        fig.update_layout(
             xaxis_title="日期",
             yaxis_title="金額",
-            xaxis={"type": "date", "tickformat": "%Y-%m-%d"},
-            bargap=0.3,
+            xaxis={
+                "type": "date",
+                "tickformat": "%Y-%m-%d",
+                "dtick": 86400000.0,  # 1 day in ms
+            },
+            yaxis={"rangemode": "tozero"},
         )
         st.plotly_chart(fig, width="stretch")
 
@@ -138,7 +137,14 @@ with tab2:
             markers=True,
         )
         fig2.update_layout(
-            xaxis={"type": "date", "tickformat": "%Y-%m-%d"},
+            xaxis_title="日期",
+            yaxis_title="數量",
+            xaxis={
+                "type": "date",
+                "tickformat": "%Y-%m-%d",
+                "dtick": 86400000.0,  # 1 day in ms
+            },
+            yaxis={"rangemode": "tozero"},
         )
         st.plotly_chart(fig2, width="stretch")
 
