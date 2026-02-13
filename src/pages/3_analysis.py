@@ -245,8 +245,20 @@ with tab4:
         if selected_subcategory != "全部":
             filtered = filtered[filtered["subcategory_display"] == selected_subcategory]
 
+        # Add display name
+        show_translated = st.session_state.get("show_translated", True)
+        if show_translated:
+            display_df["name_display"] = display_df.apply(
+                lambda x: x["name_translated"] if x["name_translated"] else x["name"],
+                axis=1
+            )
+        else:
+            display_df["name_display"] = display_df["name"]
+
         # Display table with both category columns
-        table_df = filtered[["name", "category_display", "subcategory_display", "quantity", "total_price"]].copy()
+        table_df = filtered[[
+            "name_display", "category_display", "subcategory_display", "quantity", "total_price"
+        ]].copy()
         table_df.columns = ["品項名稱", "大類別", "子類別", "數量", "金額"]
         st.dataframe(table_df, width="stretch", hide_index=True)
 

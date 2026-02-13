@@ -372,7 +372,7 @@ def display_receipt_card(row, storage, cache, duplicates):
         # Display name based on settings
         show_translated = st.session_state.get("show_translated", True)
         display_name = (row["store_name_translated"]
-            if show_translated and row["store_name_translated"]
+            if show_translated and pd.notna(row["store_name_translated"]) and row["store_name_translated"]
             else row["store_name"]
         )
 
@@ -415,7 +415,7 @@ def display_receipt_card(row, storage, cache, duplicates):
             try:
                 if len(str(row["time"])) == 5:
                     current_time_obj = datetime.strptime(str(row["time"]), "%H:%M").time()
-                elif len(str(row["time"]) >= 8):
+                elif len(str(row["time"])) >= 8:
                     current_time_obj = datetime.strptime(str(row["time"])[:8], "%H:%M:%S").time()
             except ValueError:
                 pass
@@ -450,7 +450,7 @@ def display_receipt_card(row, storage, cache, duplicates):
                 # Use translated name if available, else original
                 edit_df["display_name"] = edit_df.apply(
                     lambda x: x["name_translated"]
-                    if x["name_translated"]
+                    if pd.notna(x["name_translated"]) and x["name_translated"]
                     else x["name"],
                     axis=1,
                 )

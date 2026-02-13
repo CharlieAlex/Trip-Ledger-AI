@@ -155,10 +155,12 @@ for _, row in daily_data.iterrows():
                 st.write(f"🕐 {receipt['time']}")
 
             with col2:
-                store = receipt["store_name"]
-                if receipt.get("store_name_translated"):
-                    store += f" ({receipt['store_name_translated']})"
-                st.write(f"**{store}**")
+                # Store name
+                store_display = receipt["store_name"]
+                if show_translated and receipt.get("store_name_translated"):
+                    store_display = receipt["store_name_translated"]
+
+                st.write(f"**{store_display}**")
 
             with col3:
                 st.write(f"💰 {receipt['total']:,.0f} {receipt['currency']}")
@@ -175,7 +177,11 @@ for _, row in daily_data.iterrows():
                     emoji = Config.get_category_emoji(item["category"])
                     items_data.append({
                         "": emoji,
-                        "品項": item["name"],
+                        "品項": (
+                            item["name_translated"]
+                            if show_translated and item.get("name_translated")
+                            else item["name"]
+                        ),
                         "數量": item["quantity"],
                         "金額": item["total_price"],
                     })
