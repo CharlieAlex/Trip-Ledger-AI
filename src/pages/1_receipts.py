@@ -2,6 +2,7 @@
 
 import io
 import time
+from datetime import datetime
 from pathlib import Path
 
 import fitz  # PyMuPDF
@@ -403,6 +404,38 @@ def display_receipt_card(row, storage, cache, duplicates):
 
     # Expanded details for editing
     with st.expander("📝 編輯明細", expanded=False):
+        # Date and Time Editor
+        col_date, col_time = st.columns(2)
+
+        current_date_obj = pd.to_datetime(row["date"]).date()
+
+        # Parse current time
+        current_time_obj = datetime.now().time()
+        if pd.notna(row["time"]) and row["time"]:
+            try:
+                if len(str(row["time"])) == 5:
+                    current_time_obj = datetime.strptime(str(row["time"]), "%H:%M").time()
+                elif len(str(row["time"]) >= 8):
+                    current_time_obj = datetime.strptime(str(row["time"])[:8], "%H:%M:%S").time()
+            except ValueError:
+                pass
+
+        with col_date:
+            new_date = st.date_input(
+                "日期",
+                value=current_date_obj,
+                min_value=pd.to_datetime("1900-01-01").date(),
+                max_value=pd.to_datetime("2100-12-31").date(),
+                key=f"date_{receipt_id}"
+            )
+
+        with col_time:
+            new_time = st.time_input(
+                "時間",
+                value=current_time_obj,
+                key=f"time_{receipt_id}"
+            )
+
         # Get items for this receipt
         items_df = storage.get_items_by_receipt(receipt_id)
 
@@ -476,14 +509,47 @@ def display_receipt_card(row, storage, cache, duplicates):
                 # We need to drop our helper column before saving
                 save_df = edited_df.drop(columns=["display_name"])
 
-                if storage.update_items(receipt_id, save_df):
+                items_updated = storage.update_items(receipt_id, save_df)
+
+                # Update date/time if changed
+                meta_updated = False
+                if new_date != current_date_obj or new_time != current_time_obj:
+                    new_timestamp = datetime.combine(new_date, new_time)
+                    meta_updated = storage.update_receipt(
+                        receipt_id,
+                        {
+                            "date": new_date.isoformat(),
+                            "time": new_time.strftime("%H:%M:%S"),
+                            "timestamp": new_timestamp.isoformat()
+                        }
+                    )
+
+                if items_updated or meta_updated:
                     st.success("✅ 已儲存")
                     time.sleep(1)
                     st.rerun()
                 else:
-                    st.error("❌ 儲存失敗")
+                    st.error("❌ 儲存失敗 (無變更或錯誤)")
         else:
             st.info("此發票無品項資料")
+
+            # Allow saving date/time even if no items
+            if st.button("💾 儲存修改", key=f"save_noitems_{receipt_id}"):
+                if new_date != current_date_obj or new_time != current_time_obj:
+                    new_timestamp = datetime.combine(new_date, new_time)
+                    if storage.update_receipt(
+                        receipt_id,
+                        {
+                            "date": new_date.isoformat(),
+                            "time": new_time.strftime("%H:%M:%S"),
+                            "timestamp": new_timestamp.isoformat()
+                        }
+                    ):
+                        st.success("✅ 日期/時間已更新")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("❌ 更新失敗")
 
 
 def reprocess_receipt(source_image):
