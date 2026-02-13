@@ -106,7 +106,8 @@ class ReceiptStorage:
 
         # Append new data
         new_receipt_df = pd.DataFrame([receipt_data])
-        receipts_df = pd.concat([receipts_df, new_receipt_df], ignore_index=True)
+        if not new_receipt_df.empty:
+            receipts_df = pd.concat([receipts_df, new_receipt_df], ignore_index=True)
 
         if items_data:
             new_items_df = pd.DataFrame(items_data)
