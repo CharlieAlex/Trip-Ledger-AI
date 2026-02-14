@@ -13,7 +13,8 @@ AI 驅動的旅遊發票記帳工具，使用 Gemini 2.0 Flash 自動辨識發�
 - 🏷️ **智慧分類** - 自動將品項分類到 8 大類別
 - 📅 **時間線視覺化** - 按日期查看消費記錄
 - 📊 **圖表分析** - 類別統計、每日趨勢、店家分析
-- 🗺️ **地理分布** - 在地圖上查看消費地點
+- 📅 **時間線視覺化** - 按日期查看消費記錄
+- 📊 **圖表分析** - 類別統計、每日趨勢、店家分析
 - 📤 **報告匯出** - Excel、PDF 格式報告
 
 ## 🚀 快速開始
@@ -37,7 +38,6 @@ cp .env.example .env
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
-GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here  # 可選，用於地圖功能
 ```
 
 或在 Streamlit 應用程式的「設定」頁面中輸入。
@@ -61,11 +61,6 @@ uv run streamlit run src/app.py
 ```
 Trip-Ledger-AI/
 ├── .agent/
-│   ├── skills/                  # Agent Skills
-│   │   ├── invoice-extractor/   # 發票辨識
-│   │   ├── category-classifier/ # 品項分類
-│   │   └── geocoder/            # 地理編碼
-│   └── workflows/               # 工作流程
 ├── src/
 │   ├── app.py                   # Streamlit 主入口
 │   ├── config.py                # 設定管理
@@ -117,14 +112,6 @@ uv run python .agent/skills/invoice-extractor/scripts/extract.py
 
 ```bash
 uv run python .agent/skills/category-classifier/scripts/classify.py "商品名稱"
-```
-
-### Geocoder
-
-將店家資訊轉換為地理座標。
-
-```bash
-uv run python .agent/skills/geocoder/scripts/geocode.py "店家名稱"
 ```
 
 ## 📊 支援的類別

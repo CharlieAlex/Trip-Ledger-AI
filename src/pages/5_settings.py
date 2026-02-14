@@ -99,45 +99,45 @@ with st.expander("Gemini API", expanded=not Config.is_gemini_configured()):
     else:
         st.warning("⚠️ 未設定")
 
-with st.expander("Google Maps API", expanded=False):
-    st.markdown("""
-    Google Maps API 用於地理編碼（取得店家座標）。
-    [取得 API Key](https://console.cloud.google.com/apis/credentials)
+# with st.expander("Google Maps API", expanded=False):
+#     st.markdown("""
+#     Google Maps API 用於地理編碼（取得店家座標）。
+#     [取得 API Key](https://console.cloud.google.com/apis/credentials)
 
-    需啟用 Geocoding API。
-    """)
+#     需啟用 Geocoding API。
+#     """)
 
-    maps_key = st.text_input(
-        "Google Maps API Key",
-        value=Config.GOOGLE_MAPS_API_KEY or "",
-        type="password",
-        help="輸入你的 Google Maps API Key",
-    )
+#     maps_key = st.text_input(
+#         "Google Maps API Key",
+#         value=Config.GOOGLE_MAPS_API_KEY or "",
+#         type="password",
+#         help="輸入你的 Google Maps API Key",
+#     )
 
-    if st.button("儲存 Google Maps API Key"):
-        if maps_key:
-            Config.set_google_maps_api_key(maps_key)
-            # Also save to .env file
-            env_path = Config.PROJECT_ROOT / ".env"
-            env_content = ""
-            if env_path.exists():
-                env_content = env_path.read_text()
-                import re
-                if "GOOGLE_MAPS_API_KEY=" in env_content:
-                    env_content = re.sub(r"GOOGLE_MAPS_API_KEY=.*\n?", f"GOOGLE_MAPS_API_KEY={maps_key}\n", env_content)
-                else:
-                    env_content += f"\nGOOGLE_MAPS_API_KEY={maps_key}\n"
-            else:
-                env_content = f"GOOGLE_MAPS_API_KEY={maps_key}\n"
-            env_path.write_text(env_content)
-            st.success("✅ Google Maps API Key 已儲存")
-        else:
-            st.error("請輸入 API Key")
+#     if st.button("儲存 Google Maps API Key"):
+#         if maps_key:
+#             Config.set_google_maps_api_key(maps_key)
+#             # Also save to .env file
+#             env_path = Config.PROJECT_ROOT / ".env"
+#             env_content = ""
+#             if env_path.exists():
+#                 env_content = env_path.read_text()
+#                 import re
+#                 if "GOOGLE_MAPS_API_KEY=" in env_content:
+#                     env_content = re.sub(r"GOOGLE_MAPS_API_KEY=.*\n?", f"GOOGLE_MAPS_API_KEY={maps_key}\n", env_content)  # noqa: E501
+#                 else:
+#                     env_content += f"\nGOOGLE_MAPS_API_KEY={maps_key}\n"
+#             else:
+#                 env_content = f"GOOGLE_MAPS_API_KEY={maps_key}\n"
+#             env_path.write_text(env_content)
+#             st.success("✅ Google Maps API Key 已儲存")
+#         else:
+#             st.error("請輸入 API Key")
 
-    if Config.is_maps_configured():
-        st.success("✅ 已設定")
-    else:
-        st.info("ℹ️ 未設定（地圖功能受限）")
+#     if Config.is_maps_configured():
+#         st.success("✅ 已設定")
+#     else:
+#         st.info("ℹ️ 未設定（地圖功能受限）")
 
 st.markdown("---")
 

@@ -16,7 +16,7 @@ def render_sidebar():
         st.page_link("pages/1_receipts.py", label="發票管理", icon="🧾")
         st.page_link("pages/2_timeline.py", label="時間軸", icon="📅")
         st.page_link("pages/3_analysis.py", label="統計分析", icon="📊")
-        st.page_link("pages/4_map.py", label="地圖", icon="🗺️")
+        # st.page_link("pages/4_map.py", label="地圖", icon="🗺️")
         st.page_link("pages/5_settings.py", label="設定", icon="⚙️")
 
         st.markdown("---")
@@ -62,7 +62,7 @@ def render_sidebar():
         else:
             st.warning("⚠️ 請設定 Gemini API Key")
 
-        if Config.is_maps_configured():
-            st.success("✅ Google Maps API 已設定")
-        else:
-            st.info("ℹ️ Google Maps API 未設定")
+        # if Config.is_maps_configured():
+        #     st.success("✅ Google Maps API 已設定")
+        # else:
+        #     st.info("ℹ️ Google Maps API 未設定")
