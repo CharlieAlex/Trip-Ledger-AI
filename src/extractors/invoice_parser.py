@@ -23,7 +23,7 @@ from src.etl.models import (
     Receipt,
 )
 from src.extractors.category_classifier import CategoryClassifier
-from src.extractors.gemini_client import GeminiClient
+from src.extractors.client import GeminiClient, HuggingFaceClient
 from src.extractors.image_preprocessor import ImagePreprocessor, get_image_hash
 
 
@@ -33,13 +33,21 @@ class InvoiceParser:
     def __init__(
         self,
         api_key: Optional[str] = None,
+        provider: Optional[str] = None,
     ):
         """Initialize parser.
 
         Args:
-            api_key: Optional Gemini API key
+            api_key: Optional API key for the provider
+            provider: Optional provider override ('gemini' or 'huggingface')
         """
-        self.gemini_client = GeminiClient(api_key=api_key)
+        self.provider = provider or Config.EXTRACTION_PROVIDER
+
+        if self.provider == "huggingface":
+            self.extractor = HuggingFaceClient(api_key=api_key)
+        else:
+            self.extractor = GeminiClient(api_key=api_key)
+
         self.preprocessor = ImagePreprocessor()
         self.classifier = CategoryClassifier()
         self.cache = ProcessingCache()
@@ -85,8 +93,8 @@ class InvoiceParser:
             # Preprocess image
             processed_path = self.preprocessor.process(image_path)
 
-            # Extract data via Gemini
-            raw_data = self.gemini_client.extract_invoice_data(processed_path)
+            # Extract data via selected provider
+            raw_data = self.extractor.extract_invoice_data(processed_path)
 
             # Convert to Receipt model
             receipt = self._create_receipt(raw_data, image_path, file_hash)
@@ -326,8 +334,13 @@ def main():
 
     args = parser.parse_args()
 
-    # Check API key
-    if not Config.is_gemini_configured():
+    # Check API key configuration
+    if Config.EXTRACTION_PROVIDER == "huggingface":
+        if not Config.is_hf_configured():
+            logger.error("HUGGINGFACE_TOKEN not configured")
+            logger.error("Set it in .env file or as environment variable")
+            sys.exit(1)
+    elif not Config.is_gemini_configured():
         logger.error("GEMINI_API_KEY not configured")
         logger.error("Set it in .env file or as environment variable")
         sys.exit(1)

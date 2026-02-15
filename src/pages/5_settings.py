@@ -19,6 +19,16 @@ st.title("⚙️ 設定")
 
 render_sidebar()
 
+
+def update_env_var(content: str, key: str, value: str) -> str:
+    """Update or add an environment variable in .env content string."""
+    pattern = re.compile(f"^{key}=.*$", re.MULTILINE)
+    if pattern.search(content):
+        return pattern.sub(f"{key}={value}", content)
+    else:
+        return content + f"\n{key}={value}\n"
+
+
 # Language Settings
 st.markdown("### 🌐 語言設定")
 with st.container(border=True):
@@ -43,16 +53,8 @@ with st.container(border=True):
         if env_path.exists():
             env_content = env_path.read_text()
 
-        # Helper to update env var in string
-        def update_env_str(content, key, value):
-            pattern = re.compile(f"^{key}=.*$", re.MULTILINE)
-            if pattern.search(content):
-                return pattern.sub(f"{key}={value}", content)
-            else:
-                return content + f"\n{key}={value}\n"
-
-        env_content = update_env_str(env_content, "PRIMARY_LANGUAGE", primary_lang)
-        env_content = update_env_str(env_content, "DESTINATION_LANGUAGE", dest_lang)
+        env_content = update_env_var(env_content, "PRIMARY_LANGUAGE", primary_lang)
+        env_content = update_env_var(env_content, "DESTINATION_LANGUAGE", dest_lang)
 
         env_path.write_text(env_content)
         st.success(f"✅ 語言設定已更新: {dest_lang} -> {primary_lang}")
@@ -60,7 +62,31 @@ with st.container(border=True):
 # API Configuration
 st.markdown("### 🔑 API 設定")
 
-with st.expander("Gemini API", expanded=not Config.is_gemini_configured()):
+with st.container(border=True):
+    col1, col2 = st.columns(2)
+    with col1:
+        provider = st.radio(
+            "選擇發票辨識服務商",
+            options=["gemini", "huggingface"],
+            index=0 if Config.EXTRACTION_PROVIDER == "gemini" else 1,
+            format_func=lambda x: "Google Gemini" if x == "gemini" else "Hugging Face",
+            help="切換使用的 AI 服務商"
+        )
+
+    if st.button("💾 儲存服務商設定"):
+        Config.set_extraction_provider(provider)
+        env_path = Config.PROJECT_ROOT / ".env"
+        env_content = env_path.read_text() if env_path.exists() else ""
+
+        env_content = update_env_var(env_content, "EXTRACTION_PROVIDER", provider)
+        env_path.write_text(env_content)
+        st.success(f"✅ 已切換發票辨識服務商為: {provider}")
+        st.rerun()
+
+st.markdown("---")
+
+# Gemini Expandable
+with st.expander("Google Gemini 設定", expanded=Config.EXTRACTION_PROVIDER == "gemini"):
     st.markdown("""
     Gemini API 用於發票照片辨識。
     [取得 API Key](https://aistudio.google.com/apikey)
@@ -73,31 +99,65 @@ with st.expander("Gemini API", expanded=not Config.is_gemini_configured()):
         help="輸入你的 Gemini API Key",
     )
 
-    if st.button("儲存 Gemini API Key"):
-        if gemini_key:
-            Config.set_gemini_api_key(gemini_key)
-            # Also save to .env file
-            env_path = Config.PROJECT_ROOT / ".env"
-            env_content = ""
-            if env_path.exists():
-                env_content = env_path.read_text()
-                # Replace existing key
-                import re
-                if "GEMINI_API_KEY=" in env_content:
-                    env_content = re.sub(r"GEMINI_API_KEY=.*\n?", f"GEMINI_API_KEY={gemini_key}\n", env_content)
-                else:
-                    env_content += f"\nGEMINI_API_KEY={gemini_key}\n"
-            else:
-                env_content = f"GEMINI_API_KEY={gemini_key}\n"
-            env_path.write_text(env_content)
-            st.success("✅ Gemini API Key 已儲存")
-        else:
-            st.error("請輸入 API Key")
+    gemini_model = st.text_input(
+        "Gemini 模型名稱",
+        value=Config.GEMINI_MODEL,
+        help="例如: gemini-2.0-flash"
+    )
+
+    if st.button("儲存 Gemini 設定"):
+        Config.set_gemini_api_key(gemini_key)
+        Config.set_gemini_model(gemini_model)
+
+        env_path = Config.PROJECT_ROOT / ".env"
+        env_content = env_path.read_text() if env_path.exists() else ""
+
+        env_content = update_env_var(env_content, "GEMINI_API_KEY", gemini_key)
+        env_content = update_env_var(env_content, "GEMINI_MODEL", gemini_model)
+        env_path.write_text(env_content)
+        st.success("✅ Gemini 設定已儲存")
 
     if Config.is_gemini_configured():
-        st.success("✅ 已設定")
+        st.success("✅ API Key 已設定")
     else:
-        st.warning("⚠️ 未設定")
+        st.warning("⚠️ API Key 未設定")
+
+# Hugging Face Expandable
+with st.expander("Hugging Face 設定", expanded=Config.EXTRACTION_PROVIDER == "huggingface"):
+    st.markdown("""
+    使用 Hugging Face Inference API 進行發票辨識。
+    [取得 Access Token](https://huggingface.co/settings/tokens)
+    """)
+
+    hf_token = st.text_input(
+        "Hugging Face Token",
+        value=Config.HUGGINGFACE_TOKEN or "",
+        type="password",
+        help="輸入你的 Hugging Face Access Token",
+    )
+
+    hf_model = st.text_input(
+        "Hugging Face 模型名稱",
+        value=Config.HUGGINGFACE_MODEL,
+        help="例如: Qwen/Qwen2-VL-7B-Instruct"
+    )
+
+    if st.button("儲存 Hugging Face 設定"):
+        Config.set_huggingface_token(hf_token)
+        Config.set_huggingface_model(hf_model)
+
+        env_path = Config.PROJECT_ROOT / ".env"
+        env_content = env_path.read_text() if env_path.exists() else ""
+
+        env_content = update_env_var(env_content, "HUGGINGFACE_TOKEN", hf_token)
+        env_content = update_env_var(env_content, "HUGGINGFACE_MODEL", hf_model)
+        env_path.write_text(env_content)
+        st.success("✅ Hugging Face 設定已儲存")
+
+    if Config.is_hf_configured():
+        st.success("✅ Token 已設定")
+    else:
+        st.warning("⚠️ Token 未設定")
 
 # with st.expander("Google Maps API", expanded=False):
 #     st.markdown("""
@@ -290,7 +350,7 @@ st.markdown("### ℹ️ 關於")
 st.markdown("""
 **Trip Ledger AI** v0.1.0
 
-AI 驅動的旅遊發票記帳工具，使用 Gemini 2.0 Flash 進行發票辨識。
+AI 驅動的旅遊發票記帳工具，支援 Gemini 與 Hugging Face 模型進行發票辨識。
 
 - 📸 支援多語系發票辨識（日文、英文、繁體中文）
 - 🏷️ 自動品項分類

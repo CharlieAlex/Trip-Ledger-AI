@@ -56,11 +56,12 @@ def render_sidebar():
 
         st.markdown("---")
 
-        # API status
-        if Config.is_gemini_configured():
-            st.success("✅ Gemini API 已設定")
+        # API status (provider-aware)
+        st.markdown(f"**🤖 模型**: {Config.get_provider_display_name()}")
+        if Config.is_current_provider_configured():
+            st.success("✅ 模型 API Key 已設定")
         else:
-            st.warning("⚠️ 請設定 Gemini API Key")
+            st.warning("⚠️ 請設定模型 API Key")
 
         # if Config.is_maps_configured():
         #     st.success("✅ Google Maps API 已設定")

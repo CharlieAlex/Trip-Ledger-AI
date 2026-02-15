@@ -27,8 +27,9 @@ st.set_page_config(
 st.title("🧾 發票管理")
 
 # Check API configuration
-if not Config.is_gemini_configured():
-    st.error("⚠️ 請先設定 Gemini API Key")
+if not Config.is_current_provider_configured():
+    provider_name = Config.get_provider_display_name()
+    st.error(f"⚠️ 請先設定 {provider_name} 的 API Key")
     st.info("前往 設定 頁面配置 API Key")
     if st.button("前往設定"):
         st.switch_page("pages/5_settings.py")

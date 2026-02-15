@@ -18,6 +18,7 @@ dependencies = [
     "python-dotenv>=1.0",
     "loguru>=0.7.3",
     "pymupdf",
+    "huggingface-hub>=1.4.1",
 ]
 
 [project.optional-dependencies]
