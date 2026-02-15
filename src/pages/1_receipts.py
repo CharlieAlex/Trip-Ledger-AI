@@ -140,6 +140,11 @@ def resize_image_bytes(image_bytes, max_long_side=768):
         buf = io.BytesIO()
         # Preserve format if possible, default to JPEG
         fmt = image.format if image.format else "JPEG"
+        # JPEG does not support alpha channel; convert RGBA → RGB
+        if fmt == "JPEG" and image.mode == "RGBA":
+            background = Image.new("RGB", image.size, (255, 255, 255))
+            background.paste(image, mask=image.split()[3])
+            image = background
         image.save(buf, format=fmt, quality=85)
         return buf.getvalue()
     except Exception as e:
