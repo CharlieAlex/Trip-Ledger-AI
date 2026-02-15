@@ -71,14 +71,6 @@ def main():
 
     # Footer
     st.markdown("---")
-    st.markdown(
-        """
-        <div style="text-align: center; color: #888; font-size: 0.9em;">
-            Made with ❤️ using Streamlit & Gemini 2.0 Flash
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
 
 if __name__ == "__main__":

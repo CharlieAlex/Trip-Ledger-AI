@@ -137,7 +137,3 @@ uv run python .agent/skills/category-classifier/scripts/classify.py "商品名�
 ## 📄 授權
 
 MIT License
-
----
-
-Made with ❤️ using Streamlit & Gemini 2.0 Flash
