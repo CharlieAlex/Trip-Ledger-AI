@@ -41,7 +41,7 @@ class InvoiceParser:
             api_key: Optional API key for the provider
             provider: Optional provider override ('gemini' or 'huggingface')
         """
-        self.provider = provider or Config.EXTRACTION_PROVIDER
+        self.provider = provider or Config.get_provider()
 
         if self.provider == "huggingface":
             self.extractor = HuggingFaceClient(api_key=api_key)
@@ -290,7 +290,7 @@ class InvoiceParser:
         Returns:
             List of ProcessingResult for each image
         """
-        directory = directory or Config.PHOTOS_DIR
+        directory = directory or Config.get_photos_dir()
         directory = Path(directory)
 
         if not directory.exists():
@@ -328,14 +328,14 @@ def main():
     parser.add_argument(
         "--dir", "-d",
         type=str,
-        default=str(Config.PHOTOS_DIR),
+        default=str(Config.get_photos_dir()),
         help="Directory containing invoice photos",
     )
 
     args = parser.parse_args()
 
     # Check API key configuration
-    if Config.EXTRACTION_PROVIDER == "huggingface":
+    if Config.get_provider() == "huggingface":
         if not Config.is_hf_configured():
             logger.error("HUGGINGFACE_TOKEN not configured")
             logger.error("Set it in .env file or as environment variable")

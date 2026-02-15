@@ -25,7 +25,7 @@ class ReportExporter:
             data_dir: Directory containing CSV data
         """
         self.storage = ReceiptStorage(data_dir)
-        self.exports_dir = Config.EXPORTS_DIR
+        self.exports_dir = Config.get_exports_dir()
         self.exports_dir.mkdir(parents=True, exist_ok=True)
 
     def export_excel(self, output_path: Path | None = None) -> Path:

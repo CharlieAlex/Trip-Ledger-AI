@@ -23,7 +23,7 @@ class ProcessingCache:
         Args:
             cache_file: Path to cache file. Defaults to Config.CACHE_FILE
         """
-        self.cache_file = cache_file or Config.CACHE_FILE
+        self.cache_file = cache_file or Config.get_cache_file()
         self._cache: dict[str, CacheEntry] = {}
         self._load()
 

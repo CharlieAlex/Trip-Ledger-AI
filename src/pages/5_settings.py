@@ -1,8 +1,5 @@
 """Settings page - API configuration and app preferences."""
 
-
-import re
-
 import streamlit as st
 
 from src.config import Config
@@ -19,16 +16,6 @@ st.title("⚙️ 設定")
 
 render_sidebar()
 
-
-def update_env_var(content: str, key: str, value: str) -> str:
-    """Update or add an environment variable in .env content string."""
-    pattern = re.compile(f"^{key}=.*$", re.MULTILINE)
-    if pattern.search(content):
-        return pattern.sub(f"{key}={value}", content)
-    else:
-        return content + f"\n{key}={value}\n"
-
-
 # Language Settings
 st.markdown("### 🌐 語言設定")
 with st.container(border=True):
@@ -36,27 +23,18 @@ with st.container(border=True):
     with col1:
         primary_lang = st.text_input(
             "主要語言 (翻譯目標)",
-            value=Config.PRIMARY_LANGUAGE,
+            value=Config.get_primary_language(),
             help="AI 將把發票內容翻譯成此語言 (例如: Traditional Chinese)"
         )
     with col2:
         dest_lang = st.text_input(
             "旅遊地語言 (原文)",
-            value=Config.DESTINATION_LANGUAGE,
+            value=Config.get_destination_language(),
             help="發票的主要語言 (例如: Japanese)"
         )
 
     if st.button("💾 儲存語言設定"):
         Config.set_language_settings(primary_lang, dest_lang)
-        env_path = Config.PROJECT_ROOT / ".env"
-        env_content = ""
-        if env_path.exists():
-            env_content = env_path.read_text()
-
-        env_content = update_env_var(env_content, "PRIMARY_LANGUAGE", primary_lang)
-        env_content = update_env_var(env_content, "DESTINATION_LANGUAGE", dest_lang)
-
-        env_path.write_text(env_content)
         st.success(f"✅ 語言設定已更新: {dest_lang} -> {primary_lang}")
 
 # API Configuration
@@ -68,25 +46,20 @@ with st.container(border=True):
         provider = st.radio(
             "選擇發票辨識服務商",
             options=["gemini", "huggingface"],
-            index=0 if Config.EXTRACTION_PROVIDER == "gemini" else 1,
+            index=0 if Config.get_provider() == "gemini" else 1,
             format_func=lambda x: "Google Gemini" if x == "gemini" else "Hugging Face",
             help="切換使用的 AI 服務商"
         )
 
     if st.button("💾 儲存服務商設定"):
-        Config.set_extraction_provider(provider)
-        env_path = Config.PROJECT_ROOT / ".env"
-        env_content = env_path.read_text() if env_path.exists() else ""
-
-        env_content = update_env_var(env_content, "EXTRACTION_PROVIDER", provider)
-        env_path.write_text(env_content)
+        Config.set_provider(provider)
         st.success(f"✅ 已切換發票辨識服務商為: {provider}")
         st.rerun()
 
 st.markdown("---")
 
 # Gemini Expandable
-with st.expander("Google Gemini 設定", expanded=Config.EXTRACTION_PROVIDER == "gemini"):
+with st.expander("Google Gemini 設定", expanded=Config.get_provider() == "gemini"):
     st.markdown("""
     Gemini API 用於發票照片辨識。
     [取得 API Key](https://aistudio.google.com/apikey)
@@ -94,27 +67,20 @@ with st.expander("Google Gemini 設定", expanded=Config.EXTRACTION_PROVIDER == 
 
     gemini_key = st.text_input(
         "Gemini API Key",
-        value=Config.GEMINI_API_KEY or "",
+        value=Config.get_gemini_api_key() or "",
         type="password",
         help="輸入你的 Gemini API Key",
     )
 
     gemini_model = st.text_input(
         "Gemini 模型名稱",
-        value=Config.GEMINI_MODEL,
+        value=Config.get_gemini_model(),
         help="例如: gemini-2.0-flash"
     )
 
     if st.button("儲存 Gemini 設定"):
         Config.set_gemini_api_key(gemini_key)
         Config.set_gemini_model(gemini_model)
-
-        env_path = Config.PROJECT_ROOT / ".env"
-        env_content = env_path.read_text() if env_path.exists() else ""
-
-        env_content = update_env_var(env_content, "GEMINI_API_KEY", gemini_key)
-        env_content = update_env_var(env_content, "GEMINI_MODEL", gemini_model)
-        env_path.write_text(env_content)
         st.success("✅ Gemini 設定已儲存")
 
     if Config.is_gemini_configured():
@@ -123,7 +89,7 @@ with st.expander("Google Gemini 設定", expanded=Config.EXTRACTION_PROVIDER == 
         st.warning("⚠️ API Key 未設定")
 
 # Hugging Face Expandable
-with st.expander("Hugging Face 設定", expanded=Config.EXTRACTION_PROVIDER == "huggingface"):
+with st.expander("Hugging Face 設定", expanded=Config.get_provider() == "huggingface"):
     st.markdown("""
     使用 Hugging Face Inference API 進行發票辨識。
     [取得 Access Token](https://huggingface.co/settings/tokens)
@@ -131,27 +97,20 @@ with st.expander("Hugging Face 設定", expanded=Config.EXTRACTION_PROVIDER == "
 
     hf_token = st.text_input(
         "Hugging Face Token",
-        value=Config.HUGGINGFACE_TOKEN or "",
+        value=Config.get_hf_token() or "",
         type="password",
         help="輸入你的 Hugging Face Access Token",
     )
 
     hf_model = st.text_input(
         "Hugging Face 模型名稱",
-        value=Config.HUGGINGFACE_MODEL,
+        value=Config.get_hf_model(),
         help="例如: Qwen/Qwen2-VL-7B-Instruct"
     )
 
     if st.button("儲存 Hugging Face 設定"):
-        Config.set_huggingface_token(hf_token)
+        Config.set_hf_token(hf_token)
         Config.set_huggingface_model(hf_model)
-
-        env_path = Config.PROJECT_ROOT / ".env"
-        env_content = env_path.read_text() if env_path.exists() else ""
-
-        env_content = update_env_var(env_content, "HUGGINGFACE_TOKEN", hf_token)
-        env_content = update_env_var(env_content, "HUGGINGFACE_MODEL", hf_model)
-        env_path.write_text(env_content)
         st.success("✅ Hugging Face 設定已儲存")
 
     if Config.is_hf_configured():
@@ -206,7 +165,7 @@ st.markdown("### 🏷️ 類別管理")
 
 with st.expander("編輯類別與子類別", expanded=False):
     # Select category to edit
-    category_keys = list(Config.CATEGORIES.keys())
+    category_keys = list(Config.get_categories().keys())
     # Map labels for display
     cat_options = {k: f"{Config.get_category_emoji(k)} {Config.get_category_label(k)}" for k in category_keys}
 
@@ -217,7 +176,8 @@ with st.expander("編輯類別與子類別", expanded=False):
     )
 
     if selected_key:
-        current_data = Config.CATEGORIES[selected_key]
+        categories = Config.get_categories()
+        current_data = categories[selected_key]
 
         col1, col2 = st.columns([1, 3])
         with col1:
@@ -244,12 +204,13 @@ with st.expander("編輯類別與子類別", expanded=False):
             # Update config object
             updated_subs = [x for x in edited_sub_df["子類別"].tolist() if x and x.strip()]
 
-            Config.CATEGORIES[selected_key]["emoji"] = new_emoji
-            Config.CATEGORIES[selected_key]["label"] = new_label
-            Config.CATEGORIES[selected_key]["subcategories"] = updated_subs
+            categories = Config.get_categories()
+            categories[selected_key]["emoji"] = new_emoji
+            categories[selected_key]["label"] = new_label
+            categories[selected_key]["subcategories"] = updated_subs
 
             # Save to file
-            Config.save_categories(Config.CATEGORIES)
+            Config.save_categories(categories)
             st.success("✅ 類別設定已儲存")
             st.rerun()
 

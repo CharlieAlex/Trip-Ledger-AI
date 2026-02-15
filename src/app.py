@@ -13,6 +13,10 @@ from config import Config
 project_root = Path(__file__).parents[1]
 sys.path.append(str(project_root))
 from src.ui.sidebar import render_sidebar
+from src.utils.session import init_session
+
+# Initialize session state (Must be first)
+init_session()
 
 # Page configuration
 st.set_page_config(

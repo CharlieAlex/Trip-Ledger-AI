@@ -50,7 +50,7 @@ class ReceiptStorage:
         Args:
             data_dir: Directory for CSV files (default: Config.DATA_DIR)
         """
-        self.data_dir = data_dir or Config.DATA_DIR
+        self.data_dir = data_dir or Config.get_data_dir()
         self.receipts_file = self.data_dir / "receipts.csv"
         self.items_file = self.data_dir / "items.csv"
 

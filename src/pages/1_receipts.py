@@ -329,7 +329,7 @@ def process_uploads(uploaded_files):
     # Save files
     saved_paths = []
     for uploaded_file in uploaded_files:
-        save_path = Config.PHOTOS_DIR / uploaded_file.name
+        save_path = Config.get_photos_dir() / uploaded_file.name
         with open(save_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
         saved_paths.append(save_path)
@@ -392,7 +392,7 @@ def display_receipt_card(row, storage, cache, duplicates):
         st.markdown(f"💰 **{row['total']} {row['currency']}**")
 
         # Image (if exists)
-        image_path = Path(Config.PHOTOS_DIR) / Path(row["source_image"]).name
+        image_path = Config.get_photos_dir() / Path(row["source_image"]).name
         if image_path.exists():
             st.image(str(image_path), width='stretch')
         else:
@@ -464,7 +464,7 @@ def display_receipt_card(row, storage, cache, duplicates):
                 edit_df["display_name"] = edit_df["name"]
 
             # Category options
-            categories = list(Config.CATEGORIES.keys())
+            categories = list(Config.get_categories().keys())
 
             # Display editor
             edited_df = st.data_editor(
@@ -560,7 +560,7 @@ def display_receipt_card(row, storage, cache, duplicates):
 
 def reprocess_receipt(source_image):
     """Reprocess a single receipt."""
-    file_path = Config.PHOTOS_DIR / Path(source_image).name
+    file_path = Config.get_photos_dir() / Path(source_image).name
     if not file_path.exists():
         st.error(f"找不到檔案: {file_path}")
         return
@@ -592,7 +592,7 @@ def delete_receipt(receipt_id, source_image, storage, cache):
     # Remove from cache (need hash)
     # Since we don't have hash easily, we might need to iterate or just ignore
     # Ideally storage should return hash or we re-calculate it
-    file_path = Config.PHOTOS_DIR / Path(source_image).name
+    file_path = Config.get_photos_dir() / Path(source_image).name
     if file_path.exists():
         file_hash = get_image_hash(file_path)
         cache.remove(file_hash)
@@ -625,8 +625,8 @@ def confirm_clear_data():
             cache.clear()
 
             # Clear photos
-            if Config.PHOTOS_DIR.exists():
-                for f in Config.PHOTOS_DIR.glob("*"):
+            if Config.get_photos_dir().exists():
+                for f in Config.get_photos_dir().glob("*"):
                     if f.is_file():
                         f.unlink()
 

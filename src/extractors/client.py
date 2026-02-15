@@ -105,8 +105,8 @@ class GeminiClient:
         Args:
             api_key: Gemini API key. If not provided, uses Config.GEMINI_API_KEY
         """
-        self.api_key = api_key or Config.GEMINI_API_KEY
-        self.model_name = Config.GEMINI_MODEL
+        self.api_key = api_key or Config.get_gemini_api_key()
+        self.model_name = Config.get_gemini_model()
         self._client: Optional[genai.Client] = None
 
     @property
@@ -156,7 +156,7 @@ class GeminiClient:
                     ),
                     types.Part.from_text(
                         text=get_extraction_prompt(
-                            Config.PRIMARY_LANGUAGE, Config.DESTINATION_LANGUAGE
+                            Config.get_primary_language(), Config.get_destination_language()
                         )
                     ),
                 ],
@@ -214,8 +214,8 @@ class HuggingFaceClient:
         Args:
             api_key: HF API token. If not provided, uses Config.HUGGINGFACE_TOKEN
         """
-        self.api_key = api_key or Config.HUGGINGFACE_TOKEN
-        self.model_name = Config.HUGGINGFACE_MODEL
+        self.api_key = api_key or Config.get_hf_token()
+        self.model_name = Config.get_hf_model()
         self._client: Optional[InferenceClient] = None
 
     @property
@@ -252,7 +252,7 @@ class HuggingFaceClient:
         mime_type = _get_mime_type(image_path)
         image_url = f"data:{mime_type};base64,{image_base64}"
 
-        prompt = get_extraction_prompt(Config.PRIMARY_LANGUAGE, Config.DESTINATION_LANGUAGE)
+        prompt = get_extraction_prompt(Config.get_primary_language(), Config.get_destination_language())
 
         # Use system message to suppress reasoning/thinking and get direct JSON
         messages = [

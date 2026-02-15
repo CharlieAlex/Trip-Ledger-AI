@@ -139,7 +139,7 @@ class ImagePreprocessor:
         """Get path for processed image in cache directory."""
         # Use original filename with _processed suffix
         stem = original_path.stem
-        return Config.CACHE_DIR / f"{stem}_processed.jpg"
+        return Config.get_cache_dir() / f"{stem}_processed.jpg"
 
     @staticmethod
     def calculate_hash(image_path: str | Path) -> str:

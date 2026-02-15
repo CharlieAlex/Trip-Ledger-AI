@@ -31,10 +31,10 @@ def render_sidebar():
         st.toggle(
             "顯示翻譯名稱",
             key="show_translated",
-            help=f"切換顯示原文 ({Config.DESTINATION_LANGUAGE}) 或翻譯 ({Config.PRIMARY_LANGUAGE})"
+            help=f"切換顯示原文 ({Config.get_destination_language()}) 或翻譯 ({Config.get_primary_language()})"
         )
 
-        st.markdown(f"**目標語言**: {Config.PRIMARY_LANGUAGE}")
+        st.markdown(f"**目標語言**: {Config.get_primary_language()}")
         st.markdown("---")
 
         # Quick stats
