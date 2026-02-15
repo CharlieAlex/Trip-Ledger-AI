@@ -3,7 +3,6 @@
 import streamlit as st
 
 from src.config import Config
-from src.etl.storage import ReceiptStorage
 
 
 def render_sidebar():
@@ -35,25 +34,6 @@ def render_sidebar():
         )
 
         st.markdown(f"**目標語言**: {Config.get_primary_language()}")
-        st.markdown("---")
-
-        # Quick stats
-        @st.cache_data(ttl="1m", show_spinner=False)
-        def get_cached_stats():
-            storage = ReceiptStorage()
-            return storage.stats
-
-        stats = get_cached_stats()
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("🧾 發票", stats["receipt_count"])
-        with col2:
-            st.metric("📦 品項", stats["item_count"])
-
-        if stats["total_spending"] > 0:
-            st.container().metric("💰 總消費", f"{stats['total_spending']:,.0f}")
-
         st.markdown("---")
 
         # API status (provider-aware)
